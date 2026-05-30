@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0077be">
+<title>Beach Beer Tracker 🏖️🍺</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --sand: #f4e4c1;
+    --sea: #0077be;
+    --sea-light: #4fb0e0;
+    --sun: #ffcc33;
+    --foam: #fff8e7;
+    --coral: #ff6b6b;
+    --shadow: rgba(0, 60, 90, 0.18);
+  }
+  html, body { height: 100%; }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    color: #084c61;
+    background: linear-gradient(180deg, #87ceeb 0%, #b9e4f0 35%, var(--sand) 35%, #f9eccb 100%);
+    min-height: 100vh;
+    padding: 1rem;
+    overflow-x: hidden;
+  }
+  .sun {
+    position: fixed; top: 24px; right: 32px;
+    width: 80px; height: 80px; border-radius: 50%;
+    background: radial-gradient(circle at 40% 40%, #fff3b0, var(--sun));
+    box-shadow: 0 0 60px rgba(255, 204, 51, 0.7);
+    z-index: 0;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; position: relative; z-index: 1; }
+  header { text-align: center; padding: 1rem 0 1.5rem; }
+  h1 {
+    font-size: clamp(1.6rem, 6vw, 2.4rem);
+    color: #084c61;
+    text-shadow: 0 2px 0 var(--foam);
+    line-height: 1.1;
+  }
+  .tagline { margin-top: .4rem; color: #0a6a8a; font-weight: 600; opacity: .85; }
+
+  .card {
+    background: var(--foam);
+    border-radius: 18px;
+    padding: 1.25rem;
+    box-shadow: 0 10px 30px var(--shadow);
+    margin-bottom: 1.25rem;
+  }
+
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; text-align: center; }
+  .stat { background: linear-gradient(160deg, #fff, #f1f9ff); border-radius: 14px; padding: .9rem .5rem; }
+  .stat .num { font-size: 1.9rem; font-weight: 800; color: var(--sea); line-height: 1; }
+  .stat .lbl { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; margin-top: .35rem; color: #5a7d8c; font-weight: 700; }
+
+  .tracker-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: .9rem; }
+  .tracker-head h2 { font-size: 1.1rem; }
+
+  .form { display: grid; gap: .7rem; }
+  label { font-size: .8rem; font-weight: 700; color: #0a6a8a; display: block; margin-bottom: .25rem; }
+  input, select {
+    width: 100%; padding: .7rem .8rem; border: 2px solid #d7e9f2; border-radius: 12px;
+    font-size: 1rem; background: #fff; color: #084c61; font-family: inherit;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--sea-light); }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; }
+
+  button { cursor: pointer; font-family: inherit; }
+  .add-btn {
+    border: none; background: linear-gradient(135deg, var(--sea), var(--sea-light));
+    color: #fff; font-size: 1.05rem; font-weight: 800; padding: .85rem; border-radius: 14px;
+    box-shadow: 0 6px 16px rgba(0, 119, 190, .35); transition: transform .12s, box-shadow .12s;
+  }
+  .add-btn:hover { transform: translateY(-2px); box-shadow: 0 9px 20px rgba(0, 119, 190, .45); }
+  .add-btn:active { transform: translateY(0); }
+
+  .log-list { list-style: none; display: grid; gap: .55rem; margin-top: .25rem; }
+  .log-item {
+    display: flex; align-items: center; gap: .75rem;
+    background: #fff; border-radius: 12px; padding: .65rem .8rem;
+    box-shadow: 0 3px 8px rgba(0, 60, 90, .08);
+    animation: pop .25s ease;
+  }
+  @keyframes pop { from { transform: scale(.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .log-emoji { font-size: 1.6rem; }
+  .log-body { flex: 1; min-width: 0; }
+  .log-name { font-weight: 700; }
+  .log-meta { font-size: .78rem; color: #6a8a99; }
+  .del {
+    border: none; background: transparent; color: var(--coral); font-size: 1.2rem;
+    padding: .3rem .5rem; border-radius: 8px; line-height: 1;
+  }
+  .del:hover { background: #ffe5e5; }
+
+  .empty { text-align: center; color: #6a8a99; padding: 1.5rem .5rem; }
+  .empty .big { font-size: 2.4rem; }
+
+  footer { text-align: center; font-size: .8rem; color: #0a6a8a; opacity: .7; padding: 1rem 0 2rem; }
+  .clear-btn { border: 2px solid var(--coral); background: transparent; color: var(--coral);
+    font-weight: 700; padding: .5rem 1rem; border-radius: 10px; font-size: .85rem; }
+  .clear-btn:hover { background: var(--coral); color: #fff; }
+</style>
+</head>
+<body>
+  <div class="sun" aria-hidden="true"></div>
+  <div class="wrap">
+    <header>
+      <h1>🏖️ Beach Beer Tracker 🍺</h1>
+      <p class="tagline">Sand between your toes, tally in your hand</p>
+    </header>
+
+    <section class="card">
+      <div class="stats">
+        <div class="stat"><div class="num" id="statCount">0</div><div class="lbl">Beers</div></div>
+        <div class="stat"><div class="num" id="statOz">0</div><div class="lbl">Total oz</div></div>
+        <div class="stat"><div class="num" id="statDays">0</div><div class="lbl">Beach days</div></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="tracker-head"><h2>Log a cold one 🌊</h2></div>
+      <form class="form" id="beerForm">
+        <div>
+          <label for="brand">Beer / Brand</label>
+          <input id="brand" type="text" placeholder="e.g. Corona, IPA, that mystery can…" required>
+        </div>
+        <div class="row">
+          <div>
+            <label for="type">Type</label>
+            <select id="type">
+              <option value="🍺">Lager / Pint 🍺</option>
+              <option value="🍻">Cheers / Round 🍻</option>
+              <option value="🥫">Can 🥫</option>
+              <option value="🍾">Bottle 🍾</option>
+              <option value="🌴">Cerveza 🌴</option>
+            </select>
+          </div>
+          <div>
+            <label for="size">Size (oz)</label>
+            <select id="size">
+              <option value="12">12 oz can/bottle</option>
+              <option value="16">16 oz pint</option>
+              <option value="19.2">19.2 oz tallboy</option>
+              <option value="22">22 oz bomber</option>
+              <option value="32">32 oz crowler</option>
+            </select>
+          </div>
+        </div>
+        <button class="add-btn" type="submit">＋ Add to the tally</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <div class="tracker-head">
+        <h2>Beach log 📋</h2>
+        <button class="clear-btn" id="clearBtn" type="button">Clear all</button>
+      </div>
+      <ul class="log-list" id="logList"></ul>
+    </section>
+
+    <footer>Tracked locally on your device · Drink responsibly & stay hydrated 💧</footer>
+  </div>
+
+<script>
+  const STORE_KEY = "beachBeerLog";
+  const $ = id => document.getElementById(id);
+  const form = $("beerForm");
+  const logList = $("logList");
+
+  let log = load();
+
+  function load() {
+    try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; }
+    catch { return []; }
+  }
+  function save() { localStorage.setItem(STORE_KEY, JSON.stringify(log)); }
+
+  function fmtTime(ts) {
+    const d = new Date(ts);
+    return d.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  }
+
+  function render() {
+    // stats
+    $("statCount").textContent = log.length;
+    const totalOz = log.reduce((s, b) => s + Number(b.size), 0);
+    $("statOz").textContent = Math.round(totalOz);
+    const days = new Set(log.map(b => new Date(b.ts).toDateString()));
+    $("statDays").textContent = days.size;
+
+    // list
+    logList.innerHTML = "";
+    if (!log.length) {
+      logList.innerHTML = '<li class="empty"><div class="big">🍺</div>No beers logged yet. The beach awaits!</li>';
+      return;
+    }
+    [...log].reverse().forEach(b => {
+      const li = document.createElement("li");
+      li.className = "log-item";
+      li.innerHTML = `
+        <span class="log-emoji">${b.emoji}</span>
+        <div class="log-body">
+          <div class="log-name"></div>
+          <div class="log-meta">${b.size} oz · ${fmtTime(b.ts)}</div>
+        </div>
+        <button class="del" title="Remove" data-id="${b.id}">✕</button>`;
+      li.querySelector(".log-name").textContent = b.brand;
+      logList.appendChild(li);
+    });
+  }
+
+  form.addEventListener("submit", e => {
+    e.preventDefault();
+    const brand = $("brand").value.trim();
+    if (!brand) return;
+    log.push({
+      id: Date.now() + "-" + Math.random().toString(36).slice(2, 7),
+      brand,
+      emoji: $("type").value,
+      size: $("size").value,
+      ts: Date.now()
+    });
+    save();
+    render();
+    form.reset();
+    $("brand").focus();
+  });
+
+  logList.addEventListener("click", e => {
+    const btn = e.target.closest(".del");
+    if (!btn) return;
+    log = log.filter(b => b.id !== btn.dataset.id);
+    save();
+    render();
+  });
+
+  $("clearBtn").addEventListener("click", () => {
+    if (log.length && confirm("Clear the entire beach log? This can't be undone.")) {
+      log = [];
+      save();
+      render();
+    }
+  });
+
+  render();
+</script>
+</body>
+</html>
