@@ -1,0 +1,25 @@
+{
+  "name": "Beach Beer Tracker",
+  "short_name": "Beach Beers",
+  "description": "Log the beers you drink on the beach with running stats — works offline.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#b9e4f0",
+  "theme_color": "#0077be",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
