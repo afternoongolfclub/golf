@@ -121,6 +121,11 @@
       display: inline-block; background: var(--panel-2); border: 1px solid var(--border);
       padding: 2px 9px; border-radius: 999px; font-size: 0.8rem;
     }
+    .photo-cell { text-align: center; }
+    .thumb {
+      background: transparent; border: none; font-size: 1.1rem; padding: 2px 6px; line-height: 1;
+    }
+    .thumb:hover { filter: brightness(1.2); }
     .del {
       background: transparent; color: var(--muted); border: none; padding: 2px 6px;
       font-size: 1rem; line-height: 1;
@@ -128,6 +133,22 @@
     .del:hover { color: var(--danger); }
     .empty { text-align: center; padding: 46px 20px; color: var(--muted); }
     .empty .big { font-size: 2.4rem; margin-bottom: 8px; }
+
+    /* Photo viewer modal */
+    .modal {
+      position: fixed; inset: 0; z-index: 50; padding: 20px;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .modal[hidden] { display: none; }
+    .modal-inner {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+      padding: 16px; max-width: min(640px, 100%); max-height: 90vh;
+      display: flex; flex-direction: column; gap: 12px; box-shadow: var(--shadow);
+    }
+    .modal-inner img { max-width: 100%; max-height: 72vh; object-fit: contain; border-radius: 10px; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+    .modal-actions .btn-primary { width: auto; margin: 0; }
   </style>
 </head>
 <body>
@@ -151,7 +172,7 @@
         <div class="scan">
           <h3>📷 Scan from photo</h3>
           <div class="hint">Snap or upload a TrackMan screen — the numbers are read in
-            and filled below for you to check.</div>
+            and filled below, and the photo is saved with the shot on your phone.</div>
           <input type="file" id="photoInput" accept="image/*" capture="environment" hidden />
           <button type="button" class="scan-btn" id="scanBtn">Take / choose photo</button>
           <div class="scan-status" id="scanStatus"></div>
@@ -246,6 +267,7 @@
                 <th>Spin</th>
                 <th>Carry</th>
                 <th>Total</th>
+                <th>Photo</th>
                 <th></th>
               </tr>
             </thead>
@@ -259,6 +281,17 @@
       </section>
     </div>
   </main>
+
+  <!-- Photo viewer -->
+  <div class="modal" id="photoModal" hidden>
+    <div class="modal-inner">
+      <img id="modalImg" alt="Shot photo" />
+      <div class="modal-actions">
+        <button type="button" class="btn-primary" id="savePhotoBtn">Save to phone</button>
+        <button type="button" class="btn-ghost" id="closeModalBtn">Close</button>
+      </div>
+    </div>
+  </div>
 
   <script>
     const STORAGE_KEY = "trackman-shots-v1";
@@ -279,6 +312,55 @@
       localStorage.setItem(STORAGE_KEY, JSON.stringify(shots));
     }
 
+    /* ---------- Photo storage (IndexedDB) ---------- */
+    const DB_NAME = "trackman", PHOTO_STORE = "photos";
+    let dbPromise = null;
+    function db() {
+      if (dbPromise) return dbPromise;
+      dbPromise = new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, 1);
+        req.onupgradeneeded = () => req.result.createObjectStore(PHOTO_STORE);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+      return dbPromise;
+    }
+    function idbRun(mode, fn) {
+      return db().then((d) => new Promise((resolve, reject) => {
+        const tx = d.transaction(PHOTO_STORE, mode);
+        const store = tx.objectStore(PHOTO_STORE);
+        const req = fn(store);
+        tx.oncomplete = () => resolve(req && req.result);
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error);
+      }));
+    }
+    const putPhoto = (key, blob) => idbRun("readwrite", (s) => s.put(blob, key));
+    const getPhoto = (key) => idbRun("readonly", (s) => s.get(key));
+    const delPhoto = (key) => idbRun("readwrite", (s) => s.delete(key));
+    const clearPhotos = () => idbRun("readwrite", (s) => s.clear());
+
+    // Downscale a photo to keep on-device storage reasonable.
+    function downscale(file, maxDim = 1280, quality = 0.85) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          let { width, height } = img;
+          const scale = Math.min(1, maxDim / Math.max(width, height));
+          width = Math.round(width * scale);
+          height = Math.round(height * scale);
+          const c = document.createElement("canvas");
+          c.width = width; c.height = height;
+          c.getContext("2d").drawImage(img, 0, 0, width, height);
+          c.toBlob((b) => (b ? resolve(b) : reject(new Error("encode failed"))), "image/jpeg", quality);
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("load failed")); };
+        img.src = url;
+      });
+    }
+
     function smash(s) {
       if (s.ballSpeed != null && s.clubSpeed) return (s.ballSpeed / s.clubSpeed);
       return null;
@@ -294,12 +376,13 @@
       $("shotNo").value = nextShotNo();
     }
 
-    $("shotForm").addEventListener("submit", (e) => {
+    $("shotForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const club = $("club").value;
       if (!club) return;
-      shots.unshift({
-        id: (Date.now().toString(36) + Math.random().toString(36).slice(2, 7)),
+      const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+      const shot = {
+        id,
         ts: new Date().toISOString(),
         shotNo: num($("shotNo").value),
         club,
@@ -309,7 +392,17 @@
         spinRate: num($("spinRate").value),
         carry: num($("carry").value),
         total: num($("total").value),
-      });
+        hasPhoto: false,
+      };
+      if (pendingPhoto) {
+        try {
+          await putPhoto(id, pendingPhoto);
+          shot.hasPhoto = true;
+        } catch (err) {
+          setScanStatus("Shot saved, but the photo couldn't be stored (device storage full?).", "err");
+        }
+      }
+      shots.unshift(shot);
       save();
       e.target.reset();
       clearScan();
@@ -320,10 +413,11 @@
 
     $("filter").addEventListener("change", render);
 
-    $("clearBtn").addEventListener("click", () => {
-      if (shots.length && confirm("Delete all logged shots? This cannot be undone.")) {
+    $("clearBtn").addEventListener("click", async () => {
+      if (shots.length && confirm("Delete all logged shots and their photos? This cannot be undone.")) {
         shots = [];
         save();
+        try { await clearPhotos(); } catch (e) {}
         primeShotNo();
         render();
       }
@@ -331,9 +425,10 @@
 
     $("exportBtn").addEventListener("click", exportCsv);
 
-    function deleteShot(id) {
+    async function deleteShot(id) {
       shots = shots.filter((s) => s.id !== id);
       save();
+      try { await delPhoto(id); } catch (e) {}
       render();
     }
 
@@ -362,11 +457,14 @@
           <td>${s.spinRate == null ? "—" : Math.round(s.spinRate).toLocaleString()}</td>
           <td>${fmt(s.carry)}</td>
           <td>${fmt(s.total)}</td>
+          <td class="photo-cell">${s.hasPhoto ? `<button class="thumb" data-photo="${s.id}" data-no="${s.shotNo == null ? "" : s.shotNo}" title="View / save photo">📷</button>` : "—"}</td>
           <td><button class="del" title="Delete" data-id="${s.id}">✕</button></td>
         </tr>`).join("");
 
       body.querySelectorAll(".del").forEach((b) =>
         b.addEventListener("click", () => deleteShot(b.dataset.id)));
+      body.querySelectorAll(".thumb").forEach((b) =>
+        b.addEventListener("click", () => openPhoto(b.dataset.photo, b.dataset.no)));
 
       $("empty").style.display = rows.length ? "none" : "block";
       document.querySelector(".table-wrap").style.display = rows.length ? "block" : "none";
@@ -418,7 +516,47 @@
       URL.revokeObjectURL(url);
     }
 
+    /* ---------- Photo viewer ---------- */
+    let modalUrl = null, modalBlob = null, modalName = "trackman-shot.jpg";
+
+    async function openPhoto(id, no) {
+      let blob;
+      try { blob = await getPhoto(id); } catch (e) { blob = null; }
+      if (!blob) return;
+      modalBlob = blob;
+      modalName = "trackman-shot" + (no ? "-" + no : "") + ".jpg";
+      if (modalUrl) URL.revokeObjectURL(modalUrl);
+      modalUrl = URL.createObjectURL(blob);
+      $("modalImg").src = modalUrl;
+      $("photoModal").hidden = false;
+    }
+    function closePhoto() {
+      $("photoModal").hidden = true;
+      $("modalImg").removeAttribute("src");
+      if (modalUrl) { URL.revokeObjectURL(modalUrl); modalUrl = null; }
+      modalBlob = null;
+    }
+    async function savePhoto() {
+      if (!modalBlob) return;
+      const file = new File([modalBlob], modalName, { type: "image/jpeg" });
+      // Native share sheet (lets you "Save Image" to the camera roll on mobile)
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try { await navigator.share({ files: [file] }); return; }
+        catch (e) { if (e && e.name === "AbortError") return; }
+      }
+      // Fallback: download to Files / Downloads
+      const url = URL.createObjectURL(modalBlob);
+      const a = document.createElement("a");
+      a.href = url; a.download = modalName; a.click();
+      URL.revokeObjectURL(url);
+    }
+    $("closeModalBtn").addEventListener("click", closePhoto);
+    $("savePhotoBtn").addEventListener("click", savePhoto);
+    $("photoModal").addEventListener("click", (e) => { if (e.target.id === "photoModal") closePhoto(); });
+
     /* ---------- Scan from photo (OCR) ---------- */
+    let pendingPhoto = null;   // downscaled blob awaiting save with the next shot
+    let previewUrl = null;
 
     function setScanStatus(msg, kind) {
       const el = $("scanStatus");
@@ -431,6 +569,8 @@
       $("scanPreview").style.display = "none";
       $("scanImg").removeAttribute("src");
       $("photoInput").value = "";
+      if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
+      pendingPhoto = null;
     }
 
     // Parse OCR text and fill matching fields. Returns count of fields filled.
@@ -490,10 +630,16 @@
       if (!file) return;
 
       // Preview
-      const url = URL.createObjectURL(file);
-      $("scanImg").src = url;
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      previewUrl = URL.createObjectURL(file);
+      $("scanImg").src = previewUrl;
       $("scanPreview").style.display = "block";
 
+      // Prepare the copy that gets saved with the shot
+      try { pendingPhoto = await downscale(file); }
+      catch (err) { pendingPhoto = file; }
+
+      // OCR (photo is already queued to save even if this fails)
       $("scanBtn").disabled = true;
       try {
         setScanStatus("Loading OCR…");
@@ -504,15 +650,15 @@
           const { data } = await worker.recognize(file);
           const filled = applyOcr(data.text);
           if (filled) {
-            setScanStatus(`Read ${filled} value${filled === 1 ? "" : "s"} — please check them, then Add Shot.`, "ok");
+            setScanStatus(`Read ${filled} value${filled === 1 ? "" : "s"} — check them, then Add Shot. Photo will be saved.`, "ok");
           } else {
-            setScanStatus("Couldn't read any numbers. Try a clearer, closer photo, or enter them manually.", "err");
+            setScanStatus("Couldn't read any numbers — enter them manually. The photo will still be saved.", "err");
           }
         } finally {
           await worker.terminate();
         }
       } catch (err) {
-        setScanStatus(err.message || "Scan failed. Enter the numbers manually.", "err");
+        setScanStatus((err.message || "Scan failed.") + " Enter numbers manually; the photo will still be saved.", "err");
       } finally {
         $("scanBtn").disabled = false;
       }

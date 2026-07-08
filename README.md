@@ -12,6 +12,9 @@ A simple, self-contained web app for logging and tracking golf shot numbers from
   on-device OCR reads the numbers straight into the form for you to confirm
   before saving. (Needs internet the first time you scan, to load the OCR
   engine; after that the numbers still get filled locally.)
+- **Keeps the photo** with each shot, stored on your device (in the browser's
+  IndexedDB, downscaled to save space). Tap the 📷 in the shots table to view
+  it, and **Save to phone** to drop it into your Photos/Files.
 - **Smash factor** is calculated automatically (ball speed ÷ club speed).
 - **Session stats** — shot count, average carry, average ball speed, average
   smash factor, and longest carry — update live.
