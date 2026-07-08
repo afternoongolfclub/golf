@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TrackMan Tracker</title>
+  <style>
+    :root {
+      --bg: #0f1720;
+      --panel: #17212b;
+      --panel-2: #1e2b38;
+      --border: #2b3a49;
+      --text: #e6edf3;
+      --muted: #8b9bb0;
+      --accent: #43c463;
+      --accent-2: #2f9e4a;
+      --danger: #e5534b;
+      --shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    header {
+      background: linear-gradient(135deg, #14202b, #0f1720);
+      border-bottom: 1px solid var(--border);
+      padding: 22px 20px;
+    }
+    header .wrap { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; gap: 14px; }
+    .logo {
+      width: 42px; height: 42px; border-radius: 50%;
+      background: radial-gradient(circle at 32% 30%, #ffffff, #d7dde3 55%, #aab4bd);
+      box-shadow: inset -3px -3px 6px rgba(0,0,0,0.25);
+      flex-shrink: 0;
+      position: relative;
+    }
+    .logo::after {
+      content: ""; position: absolute; inset: 0; border-radius: 50%;
+      background-image: radial-gradient(circle, rgba(0,0,0,0.12) 1px, transparent 1.4px);
+      background-size: 7px 7px;
+    }
+    header h1 { margin: 0; font-size: 1.5rem; letter-spacing: 0.3px; }
+    header p { margin: 2px 0 0; color: var(--muted); font-size: 0.9rem; }
+    main { max-width: 1100px; margin: 0 auto; padding: 24px 20px 60px; }
+    .grid { display: grid; grid-template-columns: 360px 1fr; gap: 24px; align-items: start; }
+    @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+    .panel h2 { margin: 0 0 16px; font-size: 1.05rem; }
+    label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 5px; }
+    .field { margin-bottom: 13px; }
+    input, select {
+      width: 100%; padding: 9px 11px; border-radius: 9px;
+      border: 1px solid var(--border); background: var(--panel-2);
+      color: var(--text); font-size: 0.95rem;
+    }
+    input:focus, select:focus { outline: none; border-color: var(--accent); }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    button {
+      cursor: pointer; border: none; border-radius: 9px;
+      font-size: 0.95rem; font-weight: 600; padding: 11px 14px;
+      transition: transform 0.05s ease, background 0.15s ease;
+    }
+    button:active { transform: translateY(1px); }
+    .btn-primary { background: var(--accent); color: #06210f; width: 100%; margin-top: 6px; }
+    .btn-primary:hover { background: var(--accent-2); }
+    .btn-ghost {
+      background: transparent; color: var(--muted);
+      border: 1px solid var(--border); padding: 7px 12px; font-size: 0.85rem;
+    }
+    .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .stat {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 12px; padding: 14px 16px;
+    }
+    .stat .val { font-size: 1.5rem; font-weight: 700; }
+    .stat .lbl { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+    .toolbar .spacer { flex: 1; }
+    .toolbar select { width: auto; min-width: 140px; }
+    .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; white-space: nowrap; }
+    th, td { padding: 10px 12px; text-align: right; border-bottom: 1px solid var(--border); }
+    th:first-child, td:first-child { text-align: left; }
+    th { background: var(--panel-2); color: var(--muted); font-weight: 600; position: sticky; top: 0; }
+    tbody tr:hover { background: rgba(67, 196, 99, 0.06); }
+    .club-tag {
+      display: inline-block; background: var(--panel-2); border: 1px solid var(--border);
+      padding: 2px 9px; border-radius: 999px; font-size: 0.8rem;
+    }
+    .del {
+      background: transparent; color: var(--muted); border: none; padding: 2px 6px;
+      font-size: 1rem; line-height: 1;
+    }
+    .del:hover { color: var(--danger); }
+    .empty { text-align: center; padding: 46px 20px; color: var(--muted); }
+    .empty .big { font-size: 2.4rem; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="logo"></div>
+      <div>
+        <h1>TrackMan Tracker</h1>
+        <p>Log your shots and track the numbers that matter.</p>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="grid">
+      <!-- Entry form -->
+      <section class="panel" aria-label="Log a shot">
+        <h2>Log a Shot</h2>
+        <form id="shotForm" autocomplete="off">
+          <div class="field">
+            <label for="club">Club</label>
+            <select id="club" required>
+              <option value="">Select a club…</option>
+              <option>Driver</option>
+              <option>3 Wood</option>
+              <option>5 Wood</option>
+              <option>Hybrid</option>
+              <option>3 Iron</option>
+              <option>4 Iron</option>
+              <option>5 Iron</option>
+              <option>6 Iron</option>
+              <option>7 Iron</option>
+              <option>8 Iron</option>
+              <option>9 Iron</option>
+              <option>PW</option>
+              <option>GW</option>
+              <option>SW</option>
+              <option>LW</option>
+              <option>Putter</option>
+            </select>
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label for="clubSpeed">Club Speed (mph)</label>
+              <input type="number" id="clubSpeed" step="0.1" min="0" />
+            </div>
+            <div class="field">
+              <label for="ballSpeed">Ball Speed (mph)</label>
+              <input type="number" id="ballSpeed" step="0.1" min="0" />
+            </div>
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label for="launchAngle">Launch Angle (°)</label>
+              <input type="number" id="launchAngle" step="0.1" />
+            </div>
+            <div class="field">
+              <label for="spinRate">Spin Rate (rpm)</label>
+              <input type="number" id="spinRate" step="1" min="0" />
+            </div>
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label for="carry">Carry (yds)</label>
+              <input type="number" id="carry" step="0.1" min="0" />
+            </div>
+            <div class="field">
+              <label for="total">Total (yds)</label>
+              <input type="number" id="total" step="0.1" min="0" />
+            </div>
+          </div>
+          <button type="submit" class="btn-primary">Add Shot</button>
+        </form>
+      </section>
+
+      <!-- Data + stats -->
+      <section aria-label="Shots">
+        <div class="stats" id="stats"></div>
+
+        <div class="toolbar">
+          <label for="filter" style="margin:0;">Filter</label>
+          <select id="filter"><option value="">All clubs</option></select>
+          <div class="spacer"></div>
+          <button class="btn-ghost" id="exportBtn">Export CSV</button>
+          <button class="btn-ghost" id="clearBtn">Clear All</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Club</th>
+                <th>Club Spd</th>
+                <th>Ball Spd</th>
+                <th>Smash</th>
+                <th>Launch</th>
+                <th>Spin</th>
+                <th>Carry</th>
+                <th>Total</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="shotBody"></tbody>
+          </table>
+        </div>
+        <div class="empty" id="empty">
+          <div class="big">🏌️</div>
+          <div>No shots logged yet. Add your first shot to get started.</div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const STORAGE_KEY = "trackman-shots-v1";
+    let shots = load();
+
+    const $ = (id) => document.getElementById(id);
+    const num = (v) => (v === "" || v === null || isNaN(parseFloat(v)) ? null : parseFloat(v));
+
+    function load() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+    function save() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(shots));
+    }
+
+    function smash(s) {
+      if (s.ballSpeed != null && s.clubSpeed) return (s.ballSpeed / s.clubSpeed);
+      return null;
+    }
+    function fmt(v, dp = 1) {
+      return v == null ? "—" : Number(v).toLocaleString(undefined, { minimumFractionDigits: dp, maximumFractionDigits: dp });
+    }
+
+    $("shotForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const club = $("club").value;
+      if (!club) return;
+      shots.unshift({
+        id: (Date.now().toString(36) + Math.random().toString(36).slice(2, 7)),
+        ts: new Date().toISOString(),
+        club,
+        clubSpeed: num($("clubSpeed").value),
+        ballSpeed: num($("ballSpeed").value),
+        launchAngle: num($("launchAngle").value),
+        spinRate: num($("spinRate").value),
+        carry: num($("carry").value),
+        total: num($("total").value),
+      });
+      save();
+      e.target.reset();
+      $("club").focus();
+      render();
+    });
+
+    $("filter").addEventListener("change", render);
+
+    $("clearBtn").addEventListener("click", () => {
+      if (shots.length && confirm("Delete all logged shots? This cannot be undone.")) {
+        shots = [];
+        save();
+        render();
+      }
+    });
+
+    $("exportBtn").addEventListener("click", exportCsv);
+
+    function deleteShot(id) {
+      shots = shots.filter((s) => s.id !== id);
+      save();
+      render();
+    }
+
+    function currentFiltered() {
+      const f = $("filter").value;
+      return f ? shots.filter((s) => s.club === f) : shots;
+    }
+
+    function render() {
+      // filter options
+      const clubs = [...new Set(shots.map((s) => s.club))];
+      const sel = $("filter");
+      const prev = sel.value;
+      sel.innerHTML = '<option value="">All clubs</option>' +
+        clubs.map((c) => `<option${c === prev ? " selected" : ""}>${c}</option>`).join("");
+
+      const rows = currentFiltered();
+      const body = $("shotBody");
+      body.innerHTML = rows.map((s) => `
+        <tr>
+          <td><span class="club-tag">${s.club}</span></td>
+          <td>${fmt(s.clubSpeed)}</td>
+          <td>${fmt(s.ballSpeed)}</td>
+          <td>${fmt(smash(s), 2)}</td>
+          <td>${fmt(s.launchAngle)}</td>
+          <td>${s.spinRate == null ? "—" : Math.round(s.spinRate).toLocaleString()}</td>
+          <td>${fmt(s.carry)}</td>
+          <td>${fmt(s.total)}</td>
+          <td><button class="del" title="Delete" data-id="${s.id}">✕</button></td>
+        </tr>`).join("");
+
+      body.querySelectorAll(".del").forEach((b) =>
+        b.addEventListener("click", () => deleteShot(b.dataset.id)));
+
+      $("empty").style.display = rows.length ? "none" : "block";
+      document.querySelector(".table-wrap").style.display = rows.length ? "block" : "none";
+
+      renderStats(rows);
+    }
+
+    function avg(arr, key) {
+      const vals = arr.map((s) => (key === "smash" ? smash(s) : s[key])).filter((v) => v != null);
+      if (!vals.length) return null;
+      return vals.reduce((a, b) => a + b, 0) / vals.length;
+    }
+    function max(arr, key) {
+      const vals = arr.map((s) => s[key]).filter((v) => v != null);
+      return vals.length ? Math.max(...vals) : null;
+    }
+
+    function renderStats(rows) {
+      const cards = [
+        { lbl: "Shots", val: rows.length, dp: 0 },
+        { lbl: "Avg Carry", val: avg(rows, "carry") },
+        { lbl: "Avg Ball Spd", val: avg(rows, "ballSpeed") },
+        { lbl: "Avg Smash", val: avg(rows, "smash"), dp: 2 },
+        { lbl: "Longest Carry", val: max(rows, "carry") },
+      ];
+      $("stats").innerHTML = cards.map((c) => `
+        <div class="stat">
+          <div class="val">${c.dp === 0 ? c.val : fmt(c.val, c.dp ?? 1)}</div>
+          <div class="lbl">${c.lbl}</div>
+        </div>`).join("");
+    }
+
+    function exportCsv() {
+      if (!shots.length) return;
+      const cols = ["ts", "club", "clubSpeed", "ballSpeed", "smash", "launchAngle", "spinRate", "carry", "total"];
+      const header = ["Timestamp", "Club", "Club Speed", "Ball Speed", "Smash Factor", "Launch Angle", "Spin Rate", "Carry", "Total"];
+      const lines = [header.join(",")];
+      currentFiltered().forEach((s) => {
+        const sm = smash(s);
+        const vals = [s.ts, s.club, s.clubSpeed, s.ballSpeed, sm == null ? "" : sm.toFixed(2),
+          s.launchAngle, s.spinRate, s.carry, s.total];
+        lines.push(vals.map((v) => (v == null ? "" : String(v))).join(","));
+      });
+      const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "trackman-shots.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    render();
+  </script>
+</body>
+</html>
