@@ -78,6 +78,29 @@
       border: 1px solid var(--border); padding: 7px 12px; font-size: 0.85rem;
     }
     .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+
+    /* Scan-from-photo card */
+    .scan {
+      border: 1px dashed var(--border); border-radius: 11px;
+      padding: 14px; margin-bottom: 18px; background: var(--panel-2);
+    }
+    .scan h3 { margin: 0 0 4px; font-size: 0.95rem; }
+    .scan .hint { color: var(--muted); font-size: 0.78rem; margin-bottom: 11px; }
+    .scan-btn {
+      display: inline-flex; align-items: center; gap: 7px;
+      background: var(--panel); color: var(--text);
+      border: 1px solid var(--border); width: 100%; justify-content: center;
+    }
+    .scan-btn:hover { border-color: var(--accent); }
+    .scan-btn[disabled] { opacity: 0.6; cursor: default; }
+    .scan-status { font-size: 0.8rem; margin-top: 10px; min-height: 1em; color: var(--muted); }
+    .scan-status.ok { color: var(--accent); }
+    .scan-status.err { color: var(--danger); }
+    .scan-preview { margin-top: 11px; display: none; }
+    .scan-preview img {
+      max-width: 100%; max-height: 150px; border-radius: 8px; border: 1px solid var(--border);
+    }
+
     .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 20px; }
     .stat {
       background: var(--panel); border: 1px solid var(--border);
@@ -91,7 +114,7 @@
     .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
     table { width: 100%; border-collapse: collapse; font-size: 0.88rem; white-space: nowrap; }
     th, td { padding: 10px 12px; text-align: right; border-bottom: 1px solid var(--border); }
-    th:first-child, td:first-child { text-align: left; }
+    th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
     th { background: var(--panel-2); color: var(--muted); font-weight: 600; position: sticky; top: 0; }
     tbody tr:hover { background: rgba(67, 196, 99, 0.06); }
     .club-tag {
@@ -123,28 +146,46 @@
       <!-- Entry form -->
       <section class="panel" aria-label="Log a shot">
         <h2>Log a Shot</h2>
+
+        <!-- Scan from photo -->
+        <div class="scan">
+          <h3>📷 Scan from photo</h3>
+          <div class="hint">Snap or upload a TrackMan screen — the numbers are read in
+            and filled below for you to check.</div>
+          <input type="file" id="photoInput" accept="image/*" capture="environment" hidden />
+          <button type="button" class="scan-btn" id="scanBtn">Take / choose photo</button>
+          <div class="scan-status" id="scanStatus"></div>
+          <div class="scan-preview" id="scanPreview"><img id="scanImg" alt="Scanned photo" /></div>
+        </div>
+
         <form id="shotForm" autocomplete="off">
-          <div class="field">
-            <label for="club">Club</label>
-            <select id="club" required>
-              <option value="">Select a club…</option>
-              <option>Driver</option>
-              <option>3 Wood</option>
-              <option>5 Wood</option>
-              <option>Hybrid</option>
-              <option>3 Iron</option>
-              <option>4 Iron</option>
-              <option>5 Iron</option>
-              <option>6 Iron</option>
-              <option>7 Iron</option>
-              <option>8 Iron</option>
-              <option>9 Iron</option>
-              <option>PW</option>
-              <option>GW</option>
-              <option>SW</option>
-              <option>LW</option>
-              <option>Putter</option>
-            </select>
+          <div class="row2">
+            <div class="field">
+              <label for="club">Club</label>
+              <select id="club" required>
+                <option value="">Select…</option>
+                <option>Driver</option>
+                <option>3 Wood</option>
+                <option>5 Wood</option>
+                <option>Hybrid</option>
+                <option>3 Iron</option>
+                <option>4 Iron</option>
+                <option>5 Iron</option>
+                <option>6 Iron</option>
+                <option>7 Iron</option>
+                <option>8 Iron</option>
+                <option>9 Iron</option>
+                <option>PW</option>
+                <option>GW</option>
+                <option>SW</option>
+                <option>LW</option>
+                <option>Putter</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="shotNo">Shot #</label>
+              <input type="number" id="shotNo" step="1" min="1" />
+            </div>
           </div>
           <div class="row2">
             <div class="field">
@@ -196,6 +237,7 @@
           <table>
             <thead>
               <tr>
+                <th>#</th>
                 <th>Club</th>
                 <th>Club Spd</th>
                 <th>Ball Spd</th>
@@ -244,6 +286,13 @@
     function fmt(v, dp = 1) {
       return v == null ? "—" : Number(v).toLocaleString(undefined, { minimumFractionDigits: dp, maximumFractionDigits: dp });
     }
+    function nextShotNo() {
+      const nums = shots.map((s) => s.shotNo).filter((n) => n != null);
+      return nums.length ? Math.max(...nums) + 1 : 1;
+    }
+    function primeShotNo() {
+      $("shotNo").value = nextShotNo();
+    }
 
     $("shotForm").addEventListener("submit", (e) => {
       e.preventDefault();
@@ -252,6 +301,7 @@
       shots.unshift({
         id: (Date.now().toString(36) + Math.random().toString(36).slice(2, 7)),
         ts: new Date().toISOString(),
+        shotNo: num($("shotNo").value),
         club,
         clubSpeed: num($("clubSpeed").value),
         ballSpeed: num($("ballSpeed").value),
@@ -262,6 +312,8 @@
       });
       save();
       e.target.reset();
+      clearScan();
+      primeShotNo();
       $("club").focus();
       render();
     });
@@ -272,6 +324,7 @@
       if (shots.length && confirm("Delete all logged shots? This cannot be undone.")) {
         shots = [];
         save();
+        primeShotNo();
         render();
       }
     });
@@ -290,7 +343,6 @@
     }
 
     function render() {
-      // filter options
       const clubs = [...new Set(shots.map((s) => s.club))];
       const sel = $("filter");
       const prev = sel.value;
@@ -301,6 +353,7 @@
       const body = $("shotBody");
       body.innerHTML = rows.map((s) => `
         <tr>
+          <td>${s.shotNo == null ? "—" : s.shotNo}</td>
           <td><span class="club-tag">${s.club}</span></td>
           <td>${fmt(s.clubSpeed)}</td>
           <td>${fmt(s.ballSpeed)}</td>
@@ -348,12 +401,11 @@
 
     function exportCsv() {
       if (!shots.length) return;
-      const cols = ["ts", "club", "clubSpeed", "ballSpeed", "smash", "launchAngle", "spinRate", "carry", "total"];
-      const header = ["Timestamp", "Club", "Club Speed", "Ball Speed", "Smash Factor", "Launch Angle", "Spin Rate", "Carry", "Total"];
+      const header = ["Timestamp", "Shot #", "Club", "Club Speed", "Ball Speed", "Smash Factor", "Launch Angle", "Spin Rate", "Carry", "Total"];
       const lines = [header.join(",")];
       currentFiltered().forEach((s) => {
         const sm = smash(s);
-        const vals = [s.ts, s.club, s.clubSpeed, s.ballSpeed, sm == null ? "" : sm.toFixed(2),
+        const vals = [s.ts, s.shotNo, s.club, s.clubSpeed, s.ballSpeed, sm == null ? "" : sm.toFixed(2),
           s.launchAngle, s.spinRate, s.carry, s.total];
         lines.push(vals.map((v) => (v == null ? "" : String(v))).join(","));
       });
@@ -366,6 +418,107 @@
       URL.revokeObjectURL(url);
     }
 
+    /* ---------- Scan from photo (OCR) ---------- */
+
+    function setScanStatus(msg, kind) {
+      const el = $("scanStatus");
+      el.textContent = msg || "";
+      el.className = "scan-status" + (kind ? " " + kind : "");
+    }
+
+    function clearScan() {
+      setScanStatus("");
+      $("scanPreview").style.display = "none";
+      $("scanImg").removeAttribute("src");
+      $("photoInput").value = "";
+    }
+
+    // Parse OCR text and fill matching fields. Returns count of fields filled.
+    function applyOcr(text) {
+      const t = " " + text.replace(/\s+/g, " ").toUpperCase() + " ";
+      const NUM = "(-?[\\d,]{1,7}(?:\\.\\d+)?)";
+      const grab = (labels) => {
+        for (const lab of labels) {
+          const m = t.match(new RegExp(lab + "[^0-9\\-]{0,15}" + NUM, "i"));
+          if (m) {
+            const v = parseFloat(m[1].replace(/,/g, ""));
+            if (!isNaN(v)) return v;
+          }
+        }
+        return null;
+      };
+      const map = [
+        ["clubSpeed", ["CLUB SPEED", "CLUB SPD", "CLUBSPEED"]],
+        ["ballSpeed", ["BALL SPEED", "BALL SPD", "BALLSPEED"]],
+        ["launchAngle", ["LAUNCH ANGLE", "LAUNCH ANG", "LAUNCH"]],
+        ["spinRate", ["SPIN RATE", "SPINRATE", "SPIN"]],
+        ["carry", ["CARRY"]],
+        ["total", ["TOTAL"]],
+      ];
+      let filled = 0;
+      for (const [id, labels] of map) {
+        const v = grab(labels);
+        if (v != null) {
+          $(id).value = v;
+          filled++;
+        }
+      }
+      return filled;
+    }
+
+    let tesseractLoading = null;
+    function ensureTesseract() {
+      if (window.Tesseract) return Promise.resolve();
+      if (tesseractLoading) return tesseractLoading;
+      tesseractLoading = new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
+        s.onload = resolve;
+        s.onerror = () => {
+          tesseractLoading = null;
+          reject(new Error("Couldn't load the OCR library — you need internet the first time you scan."));
+        };
+        document.head.appendChild(s);
+      });
+      return tesseractLoading;
+    }
+
+    $("scanBtn").addEventListener("click", () => $("photoInput").click());
+
+    $("photoInput").addEventListener("change", async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+
+      // Preview
+      const url = URL.createObjectURL(file);
+      $("scanImg").src = url;
+      $("scanPreview").style.display = "block";
+
+      $("scanBtn").disabled = true;
+      try {
+        setScanStatus("Loading OCR…");
+        await ensureTesseract();
+        setScanStatus("Reading photo… this can take a few seconds.");
+        const worker = await Tesseract.createWorker("eng");
+        try {
+          const { data } = await worker.recognize(file);
+          const filled = applyOcr(data.text);
+          if (filled) {
+            setScanStatus(`Read ${filled} value${filled === 1 ? "" : "s"} — please check them, then Add Shot.`, "ok");
+          } else {
+            setScanStatus("Couldn't read any numbers. Try a clearer, closer photo, or enter them manually.", "err");
+          }
+        } finally {
+          await worker.terminate();
+        }
+      } catch (err) {
+        setScanStatus(err.message || "Scan failed. Enter the numbers manually.", "err");
+      } finally {
+        $("scanBtn").disabled = false;
+      }
+    });
+
+    primeShotNo();
     render();
   </script>
 </body>
