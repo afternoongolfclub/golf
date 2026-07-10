@@ -161,6 +161,28 @@
     .modal-inner img { max-width: 100%; max-height: 72vh; object-fit: contain; border-radius: 10px; }
     .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
     .modal-actions .btn-primary { width: auto; margin: 0; }
+
+    /* Insights */
+    .modal-inner.wide { max-width: min(780px, 100%); width: 780px; overflow-y: auto; text-align: left; }
+    .iv-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+    .iv-head h2 { margin: 0; font-size: 1.15rem; }
+    .iv-scope { color: var(--muted); font-size: 0.82rem; }
+    .iv-section { margin-top: 20px; }
+    .iv-section > h3 { margin: 0 0 10px; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+    .iv-take { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+    .iv-take li { background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font-size: 0.9rem; display: flex; gap: 10px; align-items: flex-start; }
+    .iv-take .ic { flex-shrink: 0; }
+    .iv-take b { color: var(--text); font-weight: 600; }
+    .iv-empty { color: var(--muted); text-align: center; padding: 30px 10px; }
+    .chart { width: 100%; height: auto; display: block; }
+    .chart .bar { fill: var(--accent); }
+    .chart .track { fill: var(--panel-2); }
+    .chart .whisker { stroke: #cfe9d6; stroke-width: 2; opacity: 0.55; }
+    .chart .club { fill: var(--text); font-size: 12px; }
+    .chart .val { fill: var(--text); font-size: 12px; font-weight: 600; }
+    .chart .barhit { fill: transparent; cursor: default; }
+    .iv-tip { position: fixed; z-index: 60; pointer-events: none; background: #0b1219; border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: 0.78rem; line-height: 1.35; color: var(--text); box-shadow: var(--shadow); opacity: 0; transition: opacity 0.1s; max-width: 240px; }
+    .iv-tip b { color: var(--accent); }
   </style>
 </head>
 <body>
@@ -261,6 +283,7 @@
         <div class="toolbar">
           <label for="filter" style="margin:0;">Filter</label>
           <select id="filter"><option value="">All clubs</option></select>
+          <button class="btn-ghost" id="insightsBtn">📊 Insights</button>
           <div class="spacer"></div>
           <button class="btn-ghost" id="importBtn">Import CSV / Excel</button>
           <button class="btn-ghost" id="exportBtn">Export CSV</button>
@@ -307,6 +330,21 @@
       </div>
     </div>
   </div>
+
+  <!-- Insights -->
+  <div class="modal" id="insightsModal" hidden>
+    <div class="modal-inner wide">
+      <div class="iv-head">
+        <div>
+          <h2>📊 Insights</h2>
+          <div class="iv-scope" id="ivScope"></div>
+        </div>
+        <button type="button" class="btn-ghost" id="closeInsightsBtn">Close</button>
+      </div>
+      <div id="ivBody"></div>
+    </div>
+  </div>
+  <div class="iv-tip" id="ivTip"></div>
 
   <script>
     // Storage keys kept as-is so previously saved shots/photos aren't orphaned by the rename.
@@ -677,6 +715,179 @@
         e.target.value = "";
       }
     });
+
+    /* ---------- Insights ---------- */
+    function stat(vals) {
+      const v = vals.filter((x) => x != null && !isNaN(x));
+      if (!v.length) return null;
+      const n = v.length;
+      const mean = v.reduce((a, b) => a + b, 0) / n;
+      let sd = null;
+      if (n >= 2) sd = Math.sqrt(v.reduce((a, b) => a + (b - mean) ** 2, 0) / (n - 1));
+      return { n, mean, sd, min: Math.min(...v), max: Math.max(...v) };
+    }
+    const r0 = (x) => (x == null ? null : Math.round(x));
+    const r1 = (x) => (x == null ? null : Math.round(x * 10) / 10);
+
+    function computeInsights(data) {
+      const byClub = {};
+      data.forEach((s) => { (byClub[s.club] = byClub[s.club] || []).push(s); });
+      const clubs = Object.keys(byClub).map((club) => {
+        const g = byClub[club];
+        const pick = (k) => g.map((s) => s[k]);
+        return {
+          club, n: g.length,
+          carry: stat(pick("carry")),
+          total: stat(pick("total")),
+          ballSpeed: stat(pick("ballSpeed")),
+          clubSpeed: stat(pick("clubSpeed")),
+          launch: stat(pick("launchAngle")),
+          spin: stat(pick("spinRate")),
+          smash: stat(g.map((s) => smash(s))),
+        };
+      });
+      // distinct days
+      const days = new Set(data.map((s) => (s.ts || "").slice(0, 10)).filter(Boolean)).size;
+
+      // gapping: clubs that have a carry average, longest first
+      const withCarry = clubs.filter((c) => c.carry).sort((a, b) => b.carry.mean - a.carry.mean);
+      const gaps = [];
+      for (let i = 1; i < withCarry.length; i++) {
+        gaps.push({ from: withCarry[i - 1].club, to: withCarry[i].club, gap: withCarry[i - 1].carry.mean - withCarry[i].carry.mean });
+      }
+
+      // takeaways
+      const t = [];
+      if (withCarry.length) {
+        const lng = withCarry[0];
+        t.push({ ic: "🚀", html: `Your longest club by carry is <b>${lng.club}</b> — averaging <b>${r0(lng.carry.mean)} yds</b>${lng.carry.max != null ? ` (best ${r0(lng.carry.max)})` : ""}.` });
+      }
+      const consistent = clubs.filter((c) => c.carry && c.carry.sd != null && c.carry.n >= 3);
+      if (consistent.length) {
+        const best = consistent.reduce((a, b) => (b.carry.sd < a.carry.sd ? b : a));
+        t.push({ ic: "🎯", html: `Most consistent: <b>${best.club}</b> — carries stay within about <b>±${r1(best.carry.sd)} yds</b> over ${best.carry.n} shots.` });
+        if (consistent.length >= 2) {
+          const worst = consistent.reduce((a, b) => (b.carry.sd > a.carry.sd ? b : a));
+          if (worst.club !== best.club && worst.carry.sd - best.carry.sd > 2) {
+            t.push({ ic: "📈", html: `Most scattered: <b>${worst.club}</b> — carries swing <b>±${r1(worst.carry.sd)} yds</b>. A good club to groove.` });
+          }
+        }
+      }
+      if (gaps.length) {
+        const big = gaps.reduce((a, b) => (b.gap > a.gap ? b : a));
+        t.push({ ic: "📏", html: `Biggest yardage gap: <b>${big.from} → ${big.to}</b> is <b>${r0(big.gap)} yds</b>.` });
+        const tight = gaps.filter((g) => g.gap < 6);
+        if (tight.length) {
+          const g = tight[0];
+          t.push({ ic: "🔁", html: `<b>${g.from}</b> and <b>${g.to}</b> carry about the same (${r0(g.gap)} yds apart) — you may not need both.` });
+        }
+      }
+      const drv = clubs.find((c) => /driver/i.test(c.club) && c.smash);
+      if (drv && drv.smash.mean) {
+        const sm = drv.smash.mean;
+        const verdict = sm >= 1.48 ? "excellent — you're flushing it" : sm >= 1.42 ? "solid, with a little room to gain from center strikes" : "there's real distance to gain by centering strikes";
+        t.push({ ic: "💥", html: `Driver smash factor averages <b>${sm.toFixed(2)}</b> — ${verdict}.` });
+      }
+
+      return { clubs, gaps, days, shots: data.length, clubCount: clubs.length, withCarry, takeaways: t };
+    }
+
+    function ivCarryChart(withCarry) {
+      if (!withCarry.length) return "";
+      const rows = withCarry.slice(0, 14);
+      const W = 720, rowH = 34, padL = 92, padR = 58, padT = 6, padB = 6;
+      const H = padT + padB + rows.length * rowH;
+      const maxV = Math.max(...rows.map((c) => (c.carry.max != null ? c.carry.max : c.carry.mean)));
+      const scale = (v) => padL + (v / maxV) * (W - padL - padR);
+      let svg = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Average carry by club">`;
+      rows.forEach((c, i) => {
+        const cy = padT + i * rowH + rowH / 2;
+        const by = cy - 8, bh = 16;
+        const barW = scale(c.carry.mean) - padL;
+        svg += `<text class="club" x="${padL - 10}" y="${cy + 4}" text-anchor="end">${c.club}</text>`;
+        svg += `<rect class="track" x="${padL}" y="${by}" width="${W - padL - padR}" height="${bh}" rx="8"/>`;
+        svg += `<rect class="bar" x="${padL}" y="${by}" width="${Math.max(2, barW)}" height="${bh}" rx="8"/>`;
+        if (c.carry.sd != null) {
+          const x1 = scale(Math.max(0, c.carry.mean - c.carry.sd)), x2 = scale(c.carry.mean + c.carry.sd);
+          svg += `<line class="whisker" x1="${x1}" y1="${cy}" x2="${x2}" y2="${cy}"/>`;
+          svg += `<line class="whisker" x1="${x1}" y1="${cy - 5}" x2="${x1}" y2="${cy + 5}"/>`;
+          svg += `<line class="whisker" x1="${x2}" y1="${cy - 5}" x2="${x2}" y2="${cy + 5}"/>`;
+        }
+        svg += `<text class="val" x="${scale(c.carry.mean) + 8}" y="${cy + 4}">${r0(c.carry.mean)}</text>`;
+        const tip = `${c.club} · ${c.carry.n} shot${c.carry.n === 1 ? "" : "s"}\nAvg carry ${r0(c.carry.mean)} yds` +
+          (c.carry.sd != null ? ` (±${r1(c.carry.sd)})` : "") + `\nRange ${r0(c.carry.min)}–${r0(c.carry.max)} yds` +
+          (c.total ? `\nAvg total ${r0(c.total.mean)} yds` : "");
+        svg += `<rect class="barhit" x="0" y="${padT + i * rowH}" width="${W}" height="${rowH}" data-tip="${tip.replace(/"/g, "&quot;")}"/>`;
+      });
+      svg += `</svg>`;
+      return svg;
+    }
+
+    function fmtCell(st, dp) { return st == null ? "—" : (dp ? r1(st.mean) : r0(st.mean)); }
+
+    function ivTable(clubs) {
+      const ordered = clubs.slice().sort((a, b) => ((b.carry ? b.carry.mean : -1) - (a.carry ? a.carry.mean : -1)));
+      const body = ordered.map((c) => `
+        <tr>
+          <td><span class="club-tag">${c.club}</span></td>
+          <td>${c.n}</td>
+          <td>${fmtCell(c.carry)}</td>
+          <td>${c.carry && c.carry.sd != null ? "±" + r1(c.carry.sd) : "—"}</td>
+          <td>${fmtCell(c.total)}</td>
+          <td>${fmtCell(c.ballSpeed, 1)}</td>
+          <td>${fmtCell(c.clubSpeed, 1)}</td>
+          <td>${c.smash && c.smash.mean ? c.smash.mean.toFixed(2) : "—"}</td>
+          <td>${fmtCell(c.launch, 1)}</td>
+          <td>${c.spin ? r0(c.spin.mean).toLocaleString() : "—"}</td>
+        </tr>`).join("");
+      return `<div class="table-wrap"><table>
+        <thead><tr><th>Club</th><th>Shots</th><th>Carry</th><th>±Consist.</th><th>Total</th><th>Ball</th><th>Club</th><th>Smash</th><th>Launch</th><th>Spin</th></tr></thead>
+        <tbody>${body}</tbody></table></div>`;
+    }
+
+    function renderInsights() {
+      const data = shots;
+      const ins = computeInsights(data);
+      $("ivScope").textContent = data.length
+        ? `${ins.shots} shots · ${ins.clubCount} club${ins.clubCount === 1 ? "" : "s"}${ins.days ? ` · ${ins.days} day${ins.days === 1 ? "" : "s"}` : ""}`
+        : "";
+      if (data.length < 2) {
+        $("ivBody").innerHTML = `<div class="iv-empty">Log a few more shots to unlock insights — averages, consistency, and club gapping need at least a couple of shots.</div>`;
+        return;
+      }
+      const takeaways = ins.takeaways.length
+        ? `<ul class="iv-take">${ins.takeaways.map((t) => `<li><span class="ic">${t.ic}</span><span>${t.html}</span></li>`).join("")}</ul>`
+        : `<div class="iv-empty">Add carry distances to your shots to see takeaways.</div>`;
+      const chart = ins.withCarry.length
+        ? `<div class="iv-section"><h3>Average carry by club</h3>${ivCarryChart(ins.withCarry)}</div>`
+        : "";
+      $("ivBody").innerHTML =
+        `<div class="iv-section"><h3>Takeaways</h3>${takeaways}</div>` +
+        chart +
+        `<div class="iv-section"><h3>By club</h3>${ivTable(ins.clubs)}</div>`;
+      // chart tooltips
+      $("ivBody").querySelectorAll(".barhit").forEach((el) => {
+        const show = (ev) => {
+          const tip = $("ivTip");
+          tip.innerHTML = (el.dataset.tip || "").split("\n").map((l, i) => (i === 0 ? "<b>" + l + "</b>" : l)).join("<br>");
+          const pt = ev.touches ? ev.touches[0] : ev;
+          tip.style.left = Math.min(pt.clientX + 12, window.innerWidth - 250) + "px";
+          tip.style.top = pt.clientY + 14 + "px";
+          tip.style.opacity = "1";
+        };
+        const hide = () => { $("ivTip").style.opacity = "0"; };
+        el.addEventListener("mousemove", show);
+        el.addEventListener("mouseleave", hide);
+        el.addEventListener("touchstart", show, { passive: true });
+        el.addEventListener("touchend", hide);
+      });
+    }
+
+    function openInsights() { renderInsights(); $("insightsModal").hidden = false; }
+    function closeInsights() { $("insightsModal").hidden = true; $("ivTip").style.opacity = "0"; }
+    $("insightsBtn").addEventListener("click", openInsights);
+    $("closeInsightsBtn").addEventListener("click", closeInsights);
+    $("insightsModal").addEventListener("click", (e) => { if (e.target.id === "insightsModal") closeInsights(); });
 
     /* ---------- Photo viewer ---------- */
     let modalUrl = null, modalBlob = null, modalName = "golf-sim-shot.jpg";

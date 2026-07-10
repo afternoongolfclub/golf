@@ -19,6 +19,10 @@ Garmin, Rapsodo, and others).
 - **Smash factor** is calculated automatically (ball speed ÷ club speed).
 - **Session stats** — shot count, average carry, average ball speed, average
   smash factor, and longest carry — update live.
+- **Insights** — a one-tap analysis of all your shots: plain-language takeaways
+  (longest club, most consistent, biggest yardage gap, driver efficiency), an
+  average-carry-by-club chart with dispersion, and a per-club breakdown table
+  (carry, consistency, total, ball/club speed, smash, launch, spin).
 - **Filter** the shot table by club.
 - **Import from CSV or Excel** — load an existing spreadsheet of shots. Columns
   are matched by header name (e.g. `Club`, `Shot #`, `Ball Speed`, `Spin Rate`,
