@@ -20,6 +20,11 @@ Garmin, Rapsodo, and others).
 - **Session stats** — shot count, average carry, average ball speed, average
   smash factor, and longest carry — update live.
 - **Filter** the shot table by club.
+- **Import from CSV or Excel** — load an existing spreadsheet of shots. Columns
+  are matched by header name (e.g. `Club`, `Shot #`, `Ball Speed`, `Spin Rate`,
+  `Carry`, `Total`), so it works with the app's own exports and with files from
+  most sim/launch-monitor software. `.csv` is read directly; `.xlsx` loads a
+  reader on first use (needs internet once — otherwise Save As CSV in Excel).
 - **Export to CSV** for analysis in a spreadsheet.
 - **Persistent** — everything is saved to your browser's local storage, so your
   data is still there when you come back.

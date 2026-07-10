@@ -262,9 +262,12 @@
           <label for="filter" style="margin:0;">Filter</label>
           <select id="filter"><option value="">All clubs</option></select>
           <div class="spacer"></div>
+          <button class="btn-ghost" id="importBtn">Import CSV / Excel</button>
           <button class="btn-ghost" id="exportBtn">Export CSV</button>
           <button class="btn-ghost" id="clearBtn">Clear All</button>
+          <input type="file" id="importInput" accept=".csv,.tsv,.txt,.xls,.xlsx" hidden />
         </div>
+        <div class="scan-status" id="importStatus" style="margin: -6px 0 12px;"></div>
 
         <div class="table-wrap">
           <table>
@@ -528,6 +531,152 @@
       a.click();
       URL.revokeObjectURL(url);
     }
+
+    /* ---------- Import from CSV / Excel ---------- */
+    function setImportStatus(msg, kind) {
+      const el = $("importStatus");
+      el.textContent = msg || "";
+      el.className = "scan-status" + (kind ? " " + kind : "");
+    }
+
+    // Minimal RFC-4180-ish CSV/TSV parser (handles quotes, commas/tabs, CRLF).
+    function parseDelimited(text) {
+      const firstLine = text.split(/\r?\n/, 1)[0] || "";
+      const delim = firstLine.split("\t").length > firstLine.split(",").length ? "\t" : ",";
+      const rows = [];
+      let row = [], field = "", inQ = false, i = 0;
+      while (i < text.length) {
+        const c = text[i];
+        if (inQ) {
+          if (c === '"') {
+            if (text[i + 1] === '"') { field += '"'; i += 2; continue; }
+            inQ = false; i++; continue;
+          }
+          field += c; i++; continue;
+        }
+        if (c === '"') { inQ = true; i++; continue; }
+        if (c === delim) { row.push(field); field = ""; i++; continue; }
+        if (c === "\r") { i++; continue; }
+        if (c === "\n") { row.push(field); rows.push(row); row = []; field = ""; i++; continue; }
+        field += c; i++;
+      }
+      if (field.length || row.length) { row.push(field); rows.push(row); }
+      return rows.filter((r) => r.some((v) => String(v).trim() !== ""));
+    }
+
+    const normHeader = (h) => String(h).toLowerCase().replace(/[^a-z0-9]/g, "");
+    const HEADER_MAP = {
+      club: ["club", "clubtype", "clubname"],
+      shotNo: ["shot", "shotnumber", "shotno", "shotnum"],
+      clubSpeed: ["clubspeed", "clubspd", "clubheadspeed", "chs", "clubmph"],
+      ballSpeed: ["ballspeed", "ballspd", "bs", "ballmph"],
+      launchAngle: ["launchangle", "launch", "launchang", "la", "vla", "verticallaunchangle", "launchv"],
+      spinRate: ["spinrate", "spin", "backspin", "totalspin", "spinrpm"],
+      carry: ["carry", "carrydistance", "carryyds", "carrydist", "carryyards"],
+      total: ["total", "totaldistance", "totaldist", "totalyds", "totalyards"],
+      ts: ["timestamp", "date", "time", "datetime", "shotdate"],
+    };
+
+    function cleanNum(v) {
+      if (v == null) return null;
+      const s = String(v).replace(/,/g, "").replace(/[^0-9.\-]/g, "");
+      if (s === "" || s === "-" || s === ".") return null;
+      const n = parseFloat(s);
+      return isNaN(n) ? null : n;
+    }
+
+    // rows: array of arrays; first row = header. Returns {added} or {error}.
+    function importRows(rows) {
+      if (!rows.length) return { error: "The file looks empty." };
+      const header = rows[0].map(normHeader);
+      const colField = {};
+      // For each column pick the field whose synonym matches most specifically
+      // (exact or prefix), so "Ball Speed (mph)" -> ballSpeed and
+      // "Club Head Speed" -> clubSpeed rather than club.
+      header.forEach((h, idx) => {
+        let best = null, bestLen = 0;
+        for (const field in HEADER_MAP) {
+          for (const syn of HEADER_MAP[field]) {
+            if ((h === syn || h.startsWith(syn)) && syn.length > bestLen) { best = field; bestLen = syn.length; }
+          }
+        }
+        if (best && colField[best] === undefined) colField[best] = idx;
+      });
+      if (!Object.keys(colField).length) {
+        return { error: "No recognizable columns. Add a header row with names like Club, Shot #, Ball Speed, Carry, Total." };
+      }
+      const get = (row, f) => (colField[f] !== undefined ? row[colField[f]] : undefined);
+      let nextNo = nextShotNo();
+      const newShots = [];
+      for (let r = 1; r < rows.length; r++) {
+        const row = rows[r];
+        const clubRaw = get(row, "club");
+        const club = clubRaw != null && String(clubRaw).trim() !== "" ? String(clubRaw).trim() : "Unknown";
+        const shot = {
+          id: Date.now().toString(36) + "-" + r + "-" + Math.random().toString(36).slice(2, 6),
+          ts: (() => { const t = get(row, "ts"); if (t) { const d = new Date(t); return isNaN(d) ? String(t) : d.toISOString(); } return new Date().toISOString(); })(),
+          shotNo: (() => { const n = cleanNum(get(row, "shotNo")); return n != null ? n : nextNo++; })(),
+          club,
+          clubSpeed: cleanNum(get(row, "clubSpeed")),
+          ballSpeed: cleanNum(get(row, "ballSpeed")),
+          launchAngle: cleanNum(get(row, "launchAngle")),
+          spinRate: cleanNum(get(row, "spinRate")),
+          carry: cleanNum(get(row, "carry")),
+          total: cleanNum(get(row, "total")),
+          hasPhoto: false,
+        };
+        const hasNum = ["clubSpeed", "ballSpeed", "launchAngle", "spinRate", "carry", "total"].some((k) => shot[k] != null);
+        if (club === "Unknown" && !hasNum) continue;   // skip blank/junk rows
+        newShots.push(shot);
+      }
+      if (!newShots.length) return { error: "Found a header but no data rows to import." };
+      shots = newShots.concat(shots);   // keep file order, newest batch on top
+      save();
+      primeShotNo();
+      render();
+      return { added: newShots.length };
+    }
+
+    let xlsxLoading = null;
+    function ensureXlsx() {
+      if (window.XLSX) return Promise.resolve();
+      if (xlsxLoading) return xlsxLoading;
+      xlsxLoading = new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+        s.onload = resolve;
+        s.onerror = () => { xlsxLoading = null; reject(new Error("Couldn't load the Excel reader (need internet). Tip: in Excel, Save As CSV and import that.")); };
+        document.head.appendChild(s);
+      });
+      return xlsxLoading;
+    }
+
+    $("importBtn").addEventListener("click", () => $("importInput").click());
+    $("importInput").addEventListener("change", async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      setImportStatus("Reading " + file.name + "…");
+      try {
+        const name = file.name.toLowerCase();
+        let rows;
+        if (name.endsWith(".xlsx") || name.endsWith(".xls")) {
+          await ensureXlsx();
+          const buf = await file.arrayBuffer();
+          const wb = XLSX.read(buf, { type: "array" });
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          rows = XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: false, raw: false });
+        } else {
+          rows = parseDelimited(await file.text());
+        }
+        const res = importRows(rows);
+        if (res.error) setImportStatus(res.error, "err");
+        else setImportStatus("Imported " + res.added + " shot" + (res.added === 1 ? "" : "s") + " from " + file.name + ".", "ok");
+      } catch (err) {
+        setImportStatus(err.message || "Import failed.", "err");
+      } finally {
+        e.target.value = "";
+      }
+    });
 
     /* ---------- Photo viewer ---------- */
     let modalUrl = null, modalBlob = null, modalName = "golf-sim-shot.jpg";
