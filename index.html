@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TrackMan Tracker</title>
+  <title>Golf Sim Tracker</title>
   <style>
     :root {
       --bg: #0f1720;
@@ -156,7 +156,7 @@
     <div class="wrap">
       <div class="logo"></div>
       <div>
-        <h1>TrackMan Tracker</h1>
+        <h1>Golf Sim Tracker</h1>
         <p>Log your shots and track the numbers that matter.</p>
       </div>
     </div>
@@ -171,7 +171,7 @@
         <!-- Scan from photo -->
         <div class="scan">
           <h3>📷 Scan from photo</h3>
-          <div class="hint">Snap or upload a TrackMan screen — the numbers are read in
+          <div class="hint">Snap or upload your launch monitor screen — the numbers are read in
             and filled below, and the photo is saved with the shot on your phone.</div>
           <input type="file" id="photoInput" accept="image/*" capture="environment" hidden />
           <button type="button" class="scan-btn" id="scanBtn">Take / choose photo</button>
@@ -294,6 +294,7 @@
   </div>
 
   <script>
+    // Storage keys kept as-is so previously saved shots/photos aren't orphaned by the rename.
     const STORAGE_KEY = "trackman-shots-v1";
     let shots = load();
 
@@ -511,20 +512,20 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "trackman-shots.csv";
+      a.download = "golf-sim-shots.csv";
       a.click();
       URL.revokeObjectURL(url);
     }
 
     /* ---------- Photo viewer ---------- */
-    let modalUrl = null, modalBlob = null, modalName = "trackman-shot.jpg";
+    let modalUrl = null, modalBlob = null, modalName = "golf-sim-shot.jpg";
 
     async function openPhoto(id, no) {
       let blob;
       try { blob = await getPhoto(id); } catch (e) { blob = null; }
       if (!blob) return;
       modalBlob = blob;
-      modalName = "trackman-shot" + (no ? "-" + no : "") + ".jpg";
+      modalName = "golf-sim-shot" + (no ? "-" + no : "") + ".jpg";
       if (modalUrl) URL.revokeObjectURL(modalUrl);
       modalUrl = URL.createObjectURL(blob);
       $("modalImg").src = modalUrl;
