@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8b46f0"/>
+      <stop offset="0.55" stop-color="#6c2bd9"/>
+      <stop offset="1" stop-color="#3f1a8f"/>
+    </linearGradient>
+    <radialGradient id="hi" cx="0.28" cy="0.2" r="0.75">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.35"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#fff3c4" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#fff3c4" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- full-bleed background (safe for maskable icons) -->
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <rect width="512" height="512" fill="url(#hi)"/>
+
+  <!-- castle, scaled to sit inside the maskable safe zone -->
+  <g transform="translate(256 262) scale(0.86) translate(-256 -262)">
+    <!-- left tower -->
+    <rect x="150" y="205" width="54" height="183" rx="4" fill="#ffd54a"/>
+    <polygon points="142,209 212,209 177,148" fill="#5aa9ee"/>
+    <!-- right tower -->
+    <rect x="308" y="205" width="54" height="183" rx="4" fill="#ffd54a"/>
+    <polygon points="300,209 370,209 335,148" fill="#5aa9ee"/>
+    <!-- main gate building -->
+    <rect x="192" y="256" width="128" height="132" rx="6" fill="#ffd54a"/>
+    <!-- central tower -->
+    <rect x="224" y="150" width="64" height="112" rx="4" fill="#ffe27a"/>
+    <polygon points="212,154 300,154 256,86" fill="#6ec1ff"/>
+
+    <!-- ground plate -->
+    <rect x="132" y="384" width="248" height="18" rx="9" fill="#e9a92f"/>
+
+    <!-- side flags -->
+    <rect x="175.5" y="120" width="3" height="30" fill="#fce7ef"/>
+    <polygon points="178,122 205,129 178,136" fill="#ff6b9d"/>
+    <rect x="333.5" y="120" width="3" height="30" fill="#fce7ef"/>
+    <polygon points="336,122 363,129 336,136" fill="#ff6b9d"/>
+
+    <!-- door -->
+    <path d="M236,388 L236,338 Q236,314 256,314 Q276,314 276,338 L276,388 Z" fill="#2a1155"/>
+    <!-- windows -->
+    <rect x="249" y="182" width="14" height="22" rx="7" fill="#2a1155"/>
+    <circle cx="177" cy="250" r="8" fill="#2a1155"/>
+    <circle cx="335" cy="250" r="8" fill="#2a1155"/>
+
+    <!-- central spire pole + shining star -->
+    <rect x="254" y="60" width="4" height="30" fill="#ffe27a"/>
+    <circle cx="256" cy="56" r="30" fill="url(#glow)"/>
+    <polygon points="256,34 264,50 281,56 264,62 256,80 248,62 231,56 248,50" fill="#fff8e1"/>
+
+    <!-- sparkles -->
+    <polygon points="140,150 144,160 154,164 144,168 140,178 136,168 126,164 136,160" fill="#ffffff" opacity="0.9"/>
+    <polygon points="372,178 375,186 383,189 375,192 372,200 369,192 361,189 369,186" fill="#ffffff" opacity="0.85"/>
+    <circle cx="120" cy="230" r="3" fill="#ffffff" opacity="0.8"/>
+    <circle cx="392" cy="250" r="2.5" fill="#ffffff" opacity="0.75"/>
+  </g>
+</svg>
