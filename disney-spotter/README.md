@@ -11,7 +11,7 @@ points it's worth.
 
 ## How to play
 
-1. Open the app and pick which park you're in.
+1. Open the app, add a profile for each player, and pick which park you're in.
 2. (Optional) arm bonus multipliers — head-to-toe outfit, whole group, or
    spotted while stuck in a ride queue.
 3. When you spot someone repping the wrong park, **tap that franchise**. You
@@ -22,6 +22,10 @@ points it's worth.
 
 ## Features
 
+- **Multiple player profiles** — add a profile for everyone in your group.
+  Each player keeps their own score, session, combos and badges, while the
+  bounty board is shared. Tap an avatar chip to switch players; tap your own
+  (the highlighted ✎ chip) to rename, re-avatar, or delete it.
 - **15 built-in bounties** across four rarity tiers (10 / 15 / 25 / 40 pts) plus
   the ability to **add your own custom franchises**.
 - **Combos & multipliers** for extra points.

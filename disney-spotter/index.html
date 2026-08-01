@@ -84,6 +84,25 @@
 
     main { max-width: 780px; margin: 0 auto; padding: 16px 16px calc(90px + env(safe-area-inset-bottom)); }
 
+    /* ---------- Players strip ---------- */
+    .players { display: flex; gap: 8px; overflow-x: auto; padding: 2px; margin: 0 -2px 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .players::-webkit-scrollbar { height: 0; }
+    .player {
+      flex: 0 0 auto; display: flex; align-items: center; gap: 7px;
+      border: 1px solid var(--border); background: rgba(255,255,255,0.03);
+      border-radius: 99px; padding: 6px 10px 6px 9px; cursor: pointer; user-select: none;
+      transition: transform .12s, box-shadow .15s, background .15s; white-space: nowrap;
+    }
+    .player:active { transform: scale(.96); }
+    .player.on { background: linear-gradient(135deg, var(--accent-2), var(--accent)); border-color: transparent; box-shadow: 0 4px 16px rgba(124,58,237,0.5); }
+    .player .pav { font-size: 1.2rem; line-height: 1; }
+    .player .pnm { font-size: 0.85rem; font-weight: 600; }
+    .player.on .pnm::after { content: "✎"; margin-left: 5px; opacity: .85; font-size: .82em; }
+    .player .ppt { font-size: 0.72rem; font-weight: 800; color: var(--gold); background: rgba(0,0,0,0.28); border-radius: 99px; padding: 1px 8px; font-variant-numeric: tabular-nums; }
+    .player.on .ppt { color: #fff; }
+    .player.add { color: var(--muted); border-style: dashed; padding: 6px 13px; }
+    .player.add .pav { font-size: 1rem; }
+
     /* ---------- Rank bar ---------- */
     .rank {
       background: linear-gradient(135deg, var(--panel), var(--panel-2));
@@ -256,7 +275,7 @@
       <div class="crest">🏰</div>
       <div class="titles">
         <h1>Wrong Park Patrol</h1>
-        <p>Score points for spotting rival-park attire 👀</p>
+        <p id="headSub">Score points for spotting rival-park attire 👀</p>
       </div>
       <div class="score-badge">
         <div class="val" id="totalScore">0</div>
@@ -266,6 +285,10 @@
   </header>
 
   <main>
+    <!-- Players -->
+    <div class="sec-h" style="margin-top:2px"><h2>Players</h2><span class="line"></span><span class="act" id="addPlayerBtn">+ Add</span></div>
+    <div class="players" id="players"></div>
+
     <!-- Rank -->
     <section class="rank">
       <div class="rank-top">
@@ -347,10 +370,28 @@
     </div>
   </div>
 
+  <!-- Player profile modal -->
+  <div class="modal-bg" id="pModalBg">
+    <div class="modal">
+      <h3 id="pTitle">Add player</h3>
+      <p id="pDesc">Each player keeps their own score, streaks and badges — the bounty board is shared.</p>
+      <label>Name</label>
+      <input id="pName" placeholder="e.g. Rudy, Mom, Team Goofy…" maxlength="20" />
+      <label>Avatar</label>
+      <div class="emoji-pick" id="pAvatar"></div>
+      <div class="modal-acts">
+        <button class="btn danger" id="pDelete" style="display:none;flex:0 0 auto;">Delete</button>
+        <button class="btn" id="pCancel">Cancel</button>
+        <button class="btn" id="pSave" style="background:linear-gradient(135deg,var(--accent-2),var(--accent));border-color:transparent;color:#fff;">Save</button>
+      </div>
+    </div>
+  </div>
+
   <script>
   (function () {
     "use strict";
-    const KEY = "wrongParkPatrol.v1";
+    const KEY = "wrongParkPatrol.v1";   // legacy single-profile key (migrated on load)
+    const KEY2 = "wrongParkPatrol.v2";  // current multi-profile store
     const $ = (s) => document.querySelector(s);
 
     // -------- Default bounties (rival parks / franchises) --------
@@ -410,29 +451,105 @@
 
     const EMOJI_CHOICES = ["🎯","🚀","⭐","🎮","🧟","🐲","🦸","🎃","🐰","🐭","🚂","🛸","🏴‍☠️","🎸","⚽","🏎️","🍿","👽","🦖","🧛","🐢","🌟"];
 
-    // -------- State --------
-    let state = load();
+    const AVATARS = ["🧑","👩","👨","🧒","👧","👦","🧙","🦸","🤠","👑","🧚","🎩","🐭","🦆","🐻","🦊","🐼","🦁","🐸","🦄","👽","🤖"];
+
+    // -------- State (multi-profile store) --------
+    // store = { activeId, custom:[shared bounties], profiles:[ {id,name,emoji,spots,achieved,sessionStart,ctx} ] }
+    // `state` is always a live reference to the active profile.
+    let profileSeq = 0;
+    let store = load();
+    let state = activeProfile();
+
+    function newProfile(name, emoji) {
+      return {
+        id: "p" + Date.now() + "_" + (profileSeq++),
+        name: name || "Player",
+        emoji: emoji || AVATARS[0],
+        spots: [], achieved: {}, sessionStart: Date.now(),
+        ctx: { park: "mk", mults: {} },
+      };
+    }
+
+    function sanitizeProfile(p) {
+      p = p || {};
+      p.id = p.id || ("p" + Date.now() + "_" + (profileSeq++));
+      p.name = typeof p.name === "string" && p.name ? p.name : "Player";
+      p.emoji = p.emoji || AVATARS[0];
+      p.spots = Array.isArray(p.spots) ? p.spots : [];
+      p.achieved = p.achieved && typeof p.achieved === "object" ? p.achieved : {};
+      p.sessionStart = p.sessionStart || Date.now();
+      p.ctx = p.ctx && typeof p.ctx === "object" ? p.ctx : { park: "mk", mults: {} };
+      p.ctx.mults = p.ctx.mults || {};
+      return p;
+    }
+
+    function migrateV1(v1) {
+      const p = sanitizeProfile({
+        name: "Player 1", emoji: "🧑",
+        spots: v1.spots, achieved: v1.achieved, sessionStart: v1.sessionStart, ctx: v1.ctx,
+      });
+      return { activeId: p.id, custom: Array.isArray(v1.custom) ? v1.custom : [], profiles: [p] };
+    }
 
     function load() {
+      // Preferred: v2 multi-profile store
       try {
-        const raw = localStorage.getItem(KEY);
+        const raw = localStorage.getItem(KEY2);
         if (raw) {
           const s = JSON.parse(raw);
-          s.spots = s.spots || [];
-          s.custom = s.custom || [];
-          s.achieved = s.achieved || {};
-          s.sessionStart = s.sessionStart || Date.now();
-          s.ctx = s.ctx || { park: "mk", mults: {} };
-          s.ctx.mults = s.ctx.mults || {};
+          s.custom = Array.isArray(s.custom) ? s.custom : [];
+          s.profiles = (Array.isArray(s.profiles) && s.profiles.length ? s.profiles : [newProfile("Player 1", "🧑")]).map(sanitizeProfile);
+          if (!s.profiles.some(p => p.id === s.activeId)) s.activeId = s.profiles[0].id;
           return s;
         }
       } catch (e) { /* ignore corrupt data */ }
-      return { spots: [], custom: [], achieved: {}, sessionStart: Date.now(), ctx: { park: "mk", mults: {} } };
+      // Migrate legacy single-profile (v1) data if present
+      try {
+        const rawOld = localStorage.getItem(KEY);
+        if (rawOld) return migrateV1(JSON.parse(rawOld));
+      } catch (e) { /* ignore */ }
+      // Fresh install
+      const p = newProfile("Player 1", "🧑");
+      return { activeId: p.id, custom: [], profiles: [p] };
     }
-    function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+    function save() { try { localStorage.setItem(KEY2, JSON.stringify(store)); } catch (e) {} }
 
-    function allBounties() { return DEFAULTS.concat(state.custom); }
+    function activeProfile() { return store.profiles.find(p => p.id === store.activeId) || store.profiles[0]; }
+
+    function allBounties() { return DEFAULTS.concat(store.custom); }
     function bountyById(id) { return allBounties().find(b => b.id === id); }
+
+    // -------- Profile actions --------
+    function switchProfile(id) {
+      if (id === store.activeId) return;
+      store.activeId = id; state = activeProfile();
+      combo = 1; lastSpotAt = 0;
+      save(); renderContext(); renderAll(); renderAchievements();
+      toast("Now playing as " + state.emoji + " " + state.name);
+    }
+    function addProfile(name, emoji) {
+      const p = newProfile(name, emoji);
+      store.profiles.push(p); store.activeId = p.id; state = p;
+      combo = 1; lastSpotAt = 0;
+      save(); renderContext(); renderAll(); renderAchievements();
+      toast("Welcome, " + p.emoji + " " + p.name + "!", true);
+    }
+    function updateProfile(id, name, emoji) {
+      const p = store.profiles.find(x => x.id === id); if (!p) return;
+      p.name = name; p.emoji = emoji;
+      save(); renderPlayers(); renderScore();
+      toast("Saved " + p.emoji + " " + p.name);
+    }
+    function deleteProfile(id) {
+      if (store.profiles.length <= 1) { toast("You need at least one player"); return; }
+      const gone = store.profiles.find(p => p.id === id);
+      store.profiles = store.profiles.filter(p => p.id !== id);
+      if (store.activeId === id) store.activeId = store.profiles[0].id;
+      state = activeProfile();
+      combo = 1; lastSpotAt = 0;
+      save(); renderContext(); renderAll(); renderAchievements();
+      toast("Removed " + (gone ? gone.name : "player"));
+    }
 
     // in-memory combo (per burst of spotting)
     let combo = 1, lastSpotAt = 0;
@@ -688,11 +805,13 @@
     }
 
     function clearAll() {
-      if (!confirm("Reset EVERYTHING — all spots, points and badges? This can't be undone.")) return;
-      state = { spots: [], custom: [], achieved: {}, sessionStart: Date.now(), ctx: { park: state.ctx.park, mults: {} } };
+      if (!confirm("Reset all spots, points and badges for " + state.name + "? Other players and the bounty board are kept. This can't be undone.")) return;
+      const keepPark = state.ctx.park;
+      state.spots = []; state.achieved = {}; state.sessionStart = Date.now();
+      state.ctx = { park: keepPark, mults: {} };
       combo = 1; lastSpotAt = 0;
       save(); renderAll(); renderContext();
-      toast("Wiped clean. Happy hunting!");
+      toast("Wiped " + state.name + "'s progress. Happy hunting!");
     }
 
     function share() {
@@ -700,7 +819,7 @@
       const distinct = new Set(state.spots.map(s => s.bid)).size;
       let rank = RANKS[0];
       RANKS.forEach(r => { if (total >= r.min) rank = r; });
-      const text = "🏰 Wrong Park Patrol 🏰\n" + rank.e + " " + rank.n +
+      const text = "🏰 Wrong Park Patrol 🏰\n" + state.emoji + " " + state.name + " — " + rank.e + " " + rank.n +
         "\n" + total + " pts · " + state.spots.length + " rival-park spots · " + distinct + " franchises\nCan you beat me at Disney World?";
       if (navigator.share) {
         navigator.share({ title: "Wrong Park Patrol", text: text }).catch(() => {});
@@ -739,7 +858,7 @@
       const nm = $("#mName").value.trim();
       if (!nm) { $("#mName").focus(); return; }
       const p = parseInt($("#mPoints").value, 10) || 25;
-      state.custom.push({ id: "c" + Date.now(), nm: nm, e: pickedEmoji, p: p });
+      store.custom.push({ id: "c" + Date.now(), nm: nm, e: pickedEmoji, p: p });
       save(); closeModal(); renderBounties();
       toast("Added “" + nm + "” (+" + p + ")", true);
     }
@@ -783,7 +902,67 @@
       return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
     }
 
+    function renderPlayers() {
+      const wrap = $("#players");
+      wrap.innerHTML = "";
+      store.profiles.forEach(p => {
+        const pts = p.spots.reduce((a, s) => a + s.pts, 0);
+        const chip = document.createElement("div");
+        chip.className = "player" + (p.id === store.activeId ? " on" : "");
+        chip.innerHTML =
+          '<span class="pav">' + p.emoji + '</span>' +
+          '<span class="pnm">' + escapeHtml(p.name) + '</span>' +
+          '<span class="ppt">' + pts + '</span>';
+        chip.addEventListener("click", () => {
+          if (p.id === store.activeId) openProfileModal(p); // tap the active player to edit
+          else switchProfile(p.id);
+        });
+        wrap.appendChild(chip);
+      });
+      const add = document.createElement("div");
+      add.className = "player add";
+      add.innerHTML = '<span class="pav">➕</span><span class="pnm">Add player</span>';
+      add.addEventListener("click", () => openProfileModal(null));
+      wrap.appendChild(add);
+      $("#headSub").textContent = "Playing as " + state.emoji + " " + state.name;
+    }
+
+    // -------- Player profile modal --------
+    let pEditId = null, pAvatarPick = AVATARS[0];
+    function buildAvatarPicker(sel) {
+      const wrap = $("#pAvatar");
+      wrap.innerHTML = "";
+      AVATARS.forEach(em => {
+        const s = document.createElement("span");
+        s.textContent = em;
+        if (em === sel) s.classList.add("on");
+        s.addEventListener("click", () => {
+          wrap.querySelectorAll("span").forEach(x => x.classList.remove("on"));
+          s.classList.add("on"); pAvatarPick = em;
+        });
+        wrap.appendChild(s);
+      });
+    }
+    function openProfileModal(profile) {
+      pEditId = profile ? profile.id : null;
+      pAvatarPick = profile ? profile.emoji : AVATARS[Math.min(store.profiles.length, AVATARS.length - 1)];
+      $("#pTitle").textContent = profile ? "Edit player" : "Add player";
+      $("#pName").value = profile ? profile.name : "";
+      buildAvatarPicker(pAvatarPick);
+      $("#pDelete").style.display = (profile && store.profiles.length > 1) ? "block" : "none";
+      $("#pModalBg").classList.add("show");
+      setTimeout(() => $("#pName").focus(), 50);
+    }
+    function closeProfileModal() { $("#pModalBg").classList.remove("show"); }
+    function saveProfile() {
+      const nm = $("#pName").value.trim() || "Player";
+      if (pEditId) updateProfile(pEditId, nm, pAvatarPick);
+      else addProfile(nm, pAvatarPick);
+      closeProfileModal();
+    }
+
     function renderAll() {
+      renderPlayers();
       renderScore();
       renderBounties();
       renderLog();
@@ -800,6 +979,20 @@
     $("#mSave").addEventListener("click", saveCustom);
     $("#modalBg").addEventListener("click", (e) => { if (e.target === $("#modalBg")) closeModal(); });
     $("#mName").addEventListener("keydown", (e) => { if (e.key === "Enter") saveCustom(); });
+
+    // player profiles
+    $("#addPlayerBtn").addEventListener("click", () => openProfileModal(null));
+    $("#pCancel").addEventListener("click", closeProfileModal);
+    $("#pSave").addEventListener("click", saveProfile);
+    $("#pDelete").addEventListener("click", () => {
+      if (!pEditId) return;
+      const p = store.profiles.find(x => x.id === pEditId);
+      if (confirm("Delete " + (p ? p.name : "this player") + " and all their progress? This can't be undone.")) {
+        deleteProfile(pEditId); closeProfileModal();
+      }
+    });
+    $("#pModalBg").addEventListener("click", (e) => { if (e.target === $("#pModalBg")) closeProfileModal(); });
+    $("#pName").addEventListener("keydown", (e) => { if (e.key === "Enter") saveProfile(); });
 
     // combo decays visually if you idle — refresh the label periodically
     setInterval(() => {
