@@ -201,6 +201,16 @@
       font-size: 1.1rem; cursor: pointer; padding: 4px 6px; border-radius: 8px;
     }
     .log-item .del:active { background: rgba(255,107,107,0.15); color: var(--danger); }
+    .log-item .ph {
+      flex: 0 0 auto; border: 1px solid var(--border); background: rgba(255,255,255,0.04); color: var(--muted);
+      font-size: 1rem; cursor: pointer; padding: 4px 7px; border-radius: 9px; line-height: 1;
+    }
+    .log-item .ph.has { border-color: var(--gold-2); background: rgba(255,213,74,0.14); }
+    .log-item .ph:active { transform: scale(.92); }
+    .photo-modal { max-width: 440px; }
+    .photo-frame { background: #0c0620; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; display: grid; place-items: center; max-height: 60vh; }
+    .photo-frame img { display: block; max-width: 100%; max-height: 60vh; object-fit: contain; }
+    #photoSave { text-decoration: none; text-align: center; line-height: 1.9; }
     .tag { display:inline-block; font-size: 0.62rem; padding: 1px 7px; border-radius: 99px; background: rgba(176,107,255,0.18); border: 1px solid var(--border); color: var(--muted); margin-right: 4px; }
     .tag.mult { background: rgba(255,213,74,0.16); color: var(--gold); border-color: var(--gold-2); }
 
@@ -342,11 +352,27 @@
     <p class="fineprint">
       A friendly “I-Spy” for theme-park nerds. It only rewards <b>non-Disney</b> franchises —
       Star&nbsp;Wars, Marvel, Pixar, Avatar &amp; Indiana&nbsp;Jones are all Disney, so they don't count!<br>
-      Everything is saved on this device only. No accounts, no tracking, no server.
+      Everything — including any photos you snap — is saved on this device only. No accounts, no tracking, no server.
     </p>
   </main>
 
+  <!-- Hidden camera / photo picker (opens the rear camera on phones) -->
+  <input type="file" id="camInput" accept="image/*" capture="environment" style="display:none" />
+
   <div id="toast"></div>
+
+  <!-- Photo viewer modal -->
+  <div class="modal-bg" id="photoModalBg">
+    <div class="modal photo-modal">
+      <h3>Spot photo 📸</h3>
+      <div class="photo-frame"><img id="photoImg" alt="Your spotted photo" /></div>
+      <div class="modal-acts">
+        <a class="btn" id="photoSave" download="wrong-park-spot.jpg">Save to phone</a>
+        <button class="btn danger" id="photoRemove">Remove</button>
+        <button class="btn" id="photoClose" style="background:linear-gradient(135deg,var(--accent-2),var(--accent));border-color:transparent;color:#fff;">Done</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Custom bounty modal -->
   <div class="modal-bg" id="modalBg">
@@ -438,6 +464,7 @@
       { id: "legend",  e: "🏆", t: "Legendary Catch", d: "Bag a 40-pt legendary spot" },
       { id: "day10",   e: "📸", t: "Busy Day",        d: "Log 10 spots in one session" },
       { id: "potter",  e: "🧙", t: "Muggle Radar",    d: "Spot 5 Harry Potter fans" },
+      { id: "paparazzi",e:"📸", t: "Paparazzi",       d: "Attach 3 photo proofs" },
       { id: "grand",   e: "👑", t: "Grand Marshal",   d: "Reach 500 total points" },
     ];
 
@@ -452,12 +479,14 @@
 
     const EMOJI_CHOICES = ["🎯","🚀","⭐","🎮","🧟","🐲","🦸","🎃","🐰","🐭","🚂","🛸","🏴‍☠️","🎸","⚽","🏎️","🍿","👽","🦖","🧛","🐢","🌟"];
 
+    const PHOTO_X = 1.5;   // photo-proof bonus multiplier (+50%)
+
     const AVATARS = ["🧑","👩","👨","🧒","👧","👦","🧙","🦸","🤠","👑","🧚","🎩","🐭","🦆","🐻","🦊","🐼","🦁","🐸","🦄","👽","🤖"];
 
     // -------- State (multi-profile store) --------
     // store = { activeId, custom:[shared bounties], profiles:[ {id,name,emoji,spots,achieved,sessionStart,ctx} ] }
     // `state` is always a live reference to the active profile.
-    let profileSeq = 0;
+    let profileSeq = 0, spotSeq = 0;
     let store = load();
     let state = activeProfile();
 
@@ -481,7 +510,30 @@
       p.sessionStart = p.sessionStart || Date.now();
       p.ctx = p.ctx && typeof p.ctx === "object" ? p.ctx : { park: "mk", mults: {} };
       p.ctx.mults = p.ctx.mults || {};
+      p.ctx.photoMode = !!p.ctx.photoMode;
+      p.spots = p.spots.map(sanitizeSpot);
       return p;
+    }
+
+    // Every spot carries base/mult/combo/photo so its points can be recomputed
+    // consistently (e.g. when a photo bonus is added or removed later).
+    function sanitizeSpot(s) {
+      s = s || {};
+      s.mult = s.mult || 1;
+      s.combo = s.combo || 1;
+      s.photo = !!s.photo;
+      if (s.base == null) {
+        // Legacy spot: stored pts already folded in mult/combo — recover base.
+        const comboBonus = 1 + (s.combo - 1) * 0.25;
+        const denom = s.mult * comboBonus || 1;
+        s.base = (s.pts != null ? s.pts : 0) / denom;
+      }
+      s.pts = pointsFor(s);
+      return s;
+    }
+    function pointsFor(s) {
+      const comboBonus = 1 + ((s.combo || 1) - 1) * 0.25;
+      return Math.round((s.base || 0) * (s.mult || 1) * comboBonus * (s.photo ? PHOTO_X : 1));
     }
 
     function migrateV1(v1) {
@@ -652,6 +704,16 @@
         });
         mc.appendChild(c);
       });
+      // Photo-proof: when armed, tapping a bounty opens the camera and the
+      // captured photo earns a +50% bonus.
+      const pm = document.createElement("span");
+      pm.className = "chip mult photo" + (state.ctx.photoMode ? " on" : "");
+      pm.textContent = "📷 Photo proof +50%";
+      pm.addEventListener("click", () => {
+        state.ctx.photoMode = !state.ctx.photoMode; save(); renderContext();
+        toast(state.ctx.photoMode ? "📷 Photo mode on — snap your spot for +50%" : "Photo mode off");
+      });
+      mc.appendChild(pm);
     }
 
     function activeMultiplier() {
@@ -675,12 +737,18 @@
         if (s.park) tags += '<span class="tag">' + escapeHtml(parkName(s.park)) + '</span>';
         if (s.mult && s.mult > 1) tags += '<span class="tag mult">×' + s.mult + '</span>';
         if (s.combo && s.combo > 1) tags += '<span class="tag mult">combo ' + s.combo + '×</span>';
+        if (s.photo) tags += '<span class="tag mult">📷 +50%</span>';
+        const photoBtn = s.photo
+          ? '<button class="ph has" title="View photo" aria-label="View photo">🖼️</button>'
+          : '<button class="ph" title="Add photo for +50%" aria-label="Add photo">📷</button>';
         el.innerHTML =
           '<span class="le">' + b.e + '</span>' +
           '<div class="lm"><div class="t">' + escapeHtml(b.nm) + '</div>' +
           '<div class="s">' + tags + fmtTime(s.ts) + '</div></div>' +
           '<span class="lp">+' + s.pts + '</span>' +
+          photoBtn +
           '<button class="del" title="Delete" aria-label="Delete">✕</button>';
+        el.querySelector(".ph").addEventListener("click", () => s.photo ? viewPhoto(s.id) : addPhotoTo(s.id));
         el.querySelector(".del").addEventListener("click", () => deleteSpot(s.id));
         log.appendChild(el);
       });
@@ -733,6 +801,7 @@
       const sess = sessionSpots().length;
       const hadLegendary = state.spots.some(s => s.pts >= 40);
       const hadCombo3 = state.spots.some(s => (s.combo || 1) >= 3);
+      const photos = state.spots.filter(s => s.photo).length;
       return {
         first: state.spots.length >= 1,
         combo3: hadCombo3,
@@ -741,6 +810,7 @@
         legend: hadLegendary,
         day10: sess >= 10,
         potter: potter >= 5,
+        paparazzi: photos >= 3,
         grand: total >= 500,
       };
     }
@@ -759,24 +829,33 @@
     }
 
     // -------- Actions --------
+    // Tapping a bounty: with photo mode armed, open the camera first and only
+    // score once a photo is captured; otherwise log the spot immediately.
     function logSpot(b, ev) {
+      if (state.ctx.photoMode) {
+        pendingCapture = { mode: "new", b: b, ev: { clientX: ev && ev.clientX, clientY: ev && ev.clientY } };
+        openCamera();
+        return;
+      }
+      commitSpot(b, ev, false);
+    }
+
+    function commitSpot(b, ev, photo) {
       const now = Date.now();
       if (now - lastSpotAt <= COMBO_WINDOW && lastSpotAt !== 0) combo = Math.min(combo + 1, 9);
       else combo = 1;
       lastSpotAt = now;
 
-      const mult = activeMultiplier();
-      const comboBonus = 1 + (combo - 1) * 0.25; // +25% per combo step
-      const pts = Math.round(b.p * mult * comboBonus);
-
-      state.spots.push({
-        id: "s" + now + Math.floor(now % 997),
-        bid: b.id, nm: b.nm, e: b.e, base: b.p, pts: pts,
-        park: state.ctx.park, mult: mult, combo: combo, ts: now,
-      });
+      const s = {
+        id: "s" + now + "_" + (spotSeq++),
+        bid: b.id, nm: b.nm, e: b.e, base: b.p,
+        park: state.ctx.park, mult: activeMultiplier(), combo: combo, photo: !!photo, ts: now,
+      };
+      s.pts = pointsFor(s);
+      state.spots.push(s);
       save();
 
-      floatPoints(pts, ev);
+      floatPoints(s.pts, ev);
       renderAll();
       // combo flourish
       const cs = $("#comboStat");
@@ -784,13 +863,126 @@
       checkAchievements(true);
       renderAchievements();
 
-      if (combo >= 3) toast("🔥 " + combo + "× combo! +" + pts + " pts", true);
-      else toast("Nice spot! +" + pts + " pts");
+      if (photo) toast("📸 Photo proof! +" + s.pts + " pts", true);
+      else if (combo >= 3) toast("🔥 " + combo + "× combo! +" + s.pts + " pts", true);
+      else toast("Nice spot! +" + s.pts + " pts");
+      return s;
     }
 
     function deleteSpot(id) {
       state.spots = state.spots.filter(s => s.id !== id);
+      delPhoto(id);
       save(); renderAll();
+    }
+
+    // -------- Photos (capture, on-device storage, viewing) --------
+    let pendingCapture = null;
+
+    function openCamera() { const i = $("#camInput"); if (i) { i.value = ""; i.click(); } }
+
+    function addPhotoTo(id) { pendingCapture = { mode: "add", id: id }; openCamera(); }
+
+    async function handleCapture(file) {
+      const pc = pendingCapture; pendingCapture = null;
+      if (!file || !pc) return;
+      toast("Processing photo…");
+      let blob;
+      try { blob = await downscaleImage(file); } catch (e) { blob = file; }
+
+      if (pc.mode === "new") {
+        const s = commitSpot(pc.b, pc.ev, true);
+        try { await putPhoto(s.id, blob); } catch (e) { toast("Spot saved, but the photo couldn't be stored"); }
+        renderLog();
+      } else if (pc.mode === "add") {
+        const s = state.spots.find(x => x.id === pc.id);
+        if (!s) return;
+        try { await putPhoto(s.id, blob); }
+        catch (e) { toast("Couldn't save that photo"); return; }
+        s.photo = true; s.pts = pointsFor(s);
+        save(); renderAll(); checkAchievements(true); renderAchievements();
+        toast("📸 Photo added — +50% bonus!", true);
+      }
+    }
+
+    // Draw the picked image onto a canvas, scaled down, and re-encode as JPEG
+    // so we store a small file instead of a multi-MB original.
+    function downscaleImage(file, maxDim, quality) {
+      maxDim = maxDim || 1000; quality = quality || 0.7;
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = function () {
+          URL.revokeObjectURL(url);
+          let w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+          const scale = Math.min(1, maxDim / Math.max(w, h));
+          w = Math.max(1, Math.round(w * scale)); h = Math.max(1, Math.round(h * scale));
+          const c = document.createElement("canvas"); c.width = w; c.height = h;
+          c.getContext("2d").drawImage(img, 0, 0, w, h);
+          c.toBlob(function (b) { b ? resolve(b) : reject(new Error("encode failed")); }, "image/jpeg", quality);
+        };
+        img.onerror = function () { URL.revokeObjectURL(url); reject(new Error("load failed")); };
+        img.src = url;
+      });
+    }
+
+    // Photos live in IndexedDB (not localStorage) keyed by spot id, so they
+    // don't bloat the JSON store or hit its small quota.
+    const IDB_NAME = "wppPhotos", IDB_STORE = "photos";
+    function idb() {
+      return new Promise((resolve, reject) => {
+        if (!window.indexedDB) { reject(new Error("no indexeddb")); return; }
+        const r = indexedDB.open(IDB_NAME, 1);
+        r.onupgradeneeded = function () { r.result.createObjectStore(IDB_STORE); };
+        r.onsuccess = function () { resolve(r.result); };
+        r.onerror = function () { reject(r.error); };
+      });
+    }
+    function putPhoto(id, blob) {
+      return idb().then(db => new Promise((resolve, reject) => {
+        const tx = db.transaction(IDB_STORE, "readwrite");
+        tx.objectStore(IDB_STORE).put(blob, id);
+        tx.oncomplete = resolve; tx.onerror = function () { reject(tx.error); };
+      }));
+    }
+    function getPhoto(id) {
+      return idb().then(db => new Promise((resolve, reject) => {
+        const tx = db.transaction(IDB_STORE, "readonly");
+        const rq = tx.objectStore(IDB_STORE).get(id);
+        rq.onsuccess = function () { resolve(rq.result || null); };
+        rq.onerror = function () { reject(rq.error); };
+      }));
+    }
+    function delPhoto(id) {
+      idb().then(db => { const tx = db.transaction(IDB_STORE, "readwrite"); tx.objectStore(IDB_STORE).delete(id); })
+        .catch(function () { /* nothing to clean up */ });
+    }
+
+    let viewUrl = null, viewId = null;
+    async function viewPhoto(id) {
+      let blob;
+      try { blob = await getPhoto(id); } catch (e) { blob = null; }
+      if (!blob) { toast("Photo not found on this device"); return; }
+      if (viewUrl) URL.revokeObjectURL(viewUrl);
+      viewUrl = URL.createObjectURL(blob); viewId = id;
+      const img = $("#photoImg");
+      img.src = viewUrl;
+      $("#photoSave").href = viewUrl;
+      $("#photoModalBg").classList.add("show");
+    }
+    function closePhotoModal() {
+      $("#photoModalBg").classList.remove("show");
+      if (viewUrl) { URL.revokeObjectURL(viewUrl); viewUrl = null; }
+      viewId = null;
+    }
+    function removeCurrentPhoto() {
+      if (!viewId) return;
+      const s = state.spots.find(x => x.id === viewId);
+      closePhotoModal();
+      if (!s) return;
+      delPhoto(s.id);
+      s.photo = false; s.pts = pointsFor(s);
+      save(); renderAll();
+      toast("Photo removed (bonus reverted)");
     }
     function undoLast() {
       if (!state.spots.length) { toast("Nothing to undo"); return; }
@@ -994,6 +1186,12 @@
     });
     $("#pModalBg").addEventListener("click", (e) => { if (e.target === $("#pModalBg")) closeProfileModal(); });
     $("#pName").addEventListener("keydown", (e) => { if (e.key === "Enter") saveProfile(); });
+
+    // photos
+    $("#camInput").addEventListener("change", (e) => { handleCapture(e.target.files && e.target.files[0]); });
+    $("#photoClose").addEventListener("click", closePhotoModal);
+    $("#photoRemove").addEventListener("click", removeCurrentPhoto);
+    $("#photoModalBg").addEventListener("click", (e) => { if (e.target === $("#photoModalBg")) closePhotoModal(); });
 
     // combo decays visually if you idle — refresh the label periodically
     setInterval(() => {
