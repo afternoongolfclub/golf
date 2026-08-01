@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Wrong Park Patrol · Disney Attire Spotter</title>
+  <meta name="description" content="A scavenger-hunt scoring game for Disney World: earn points every time you spot someone repping a rival park or franchise — Harry Potter, Mario, Pokémon, Minions and more." />
+
+  <!-- Self-contained SVG favicon (a little castle) -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%236c2bd9'/%3E%3Cg fill='%23ffd54a'%3E%3Crect x='14' y='30' width='36' height='22'/%3E%3Crect x='12' y='22' width='6' height='30'/%3E%3Crect x='46' y='22' width='6' height='30'/%3E%3Crect x='28' y='18' width='8' height='34'/%3E%3C/g%3E%3Cg fill='%23fff3c4'%3E%3Cpolygon points='15,22 21,12 27,22'/%3E%3Cpolygon points='28,18 32,6 36,18'/%3E%3Cpolygon points='37,22 43,12 49,22'/%3E%3C/g%3E%3Ccircle cx='32' cy='4' r='2.4' fill='%23ffffff'/%3E%3C/svg%3E" />
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%236c2bd9'/%3E%3Cg fill='%23ffd54a'%3E%3Crect x='14' y='30' width='36' height='22'/%3E%3Crect x='12' y='22' width='6' height='30'/%3E%3Crect x='46' y='22' width='6' height='30'/%3E%3Crect x='28' y='18' width='8' height='34'/%3E%3C/g%3E%3Cg fill='%23fff3c4'%3E%3Cpolygon points='15,22 21,12 27,22'/%3E%3Cpolygon points='28,18 32,6 36,18'/%3E%3Cpolygon points='37,22 43,12 49,22'/%3E%3C/g%3E%3C/svg%3E" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#2a1155" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Wrong Park" />
+
+  <style>
+    :root {
+      --bg: #17092e;
+      --bg-2: #23103f;
+      --panel: #2a1552;
+      --panel-2: #331a63;
+      --border: #4a2b7a;
+      --text: #f2ebff;
+      --muted: #b6a3d8;
+      --gold: #ffd54a;
+      --gold-2: #f5b73c;
+      --accent: #b06bff;
+      --accent-2: #7c3aed;
+      --good: #38d39f;
+      --danger: #ff6b6b;
+      --shadow: 0 10px 34px rgba(0, 0, 0, 0.45);
+      --radius: 16px;
+      /* tier colors */
+      --t-common: #6ec1ff;
+      --t-uncommon: #52e0a4;
+      --t-rare: #c58bff;
+      --t-legendary: #ffd54a;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { overflow-x: hidden; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text);
+      line-height: 1.5;
+      background:
+        radial-gradient(1200px 600px at 15% -10%, #3a1a6e 0%, transparent 55%),
+        radial-gradient(1000px 700px at 110% 0%, #5a1e8a 0%, transparent 45%),
+        linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+      background-attachment: fixed;
+      min-height: 100vh;
+    }
+    a { color: var(--accent); }
+
+    /* ---------- Header ---------- */
+    header {
+      position: sticky; top: 0; z-index: 30;
+      backdrop-filter: blur(10px);
+      background: linear-gradient(180deg, rgba(20,8,42,0.92), rgba(20,8,42,0.72));
+      border-bottom: 1px solid var(--border);
+      padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
+    }
+    .head-wrap { max-width: 780px; margin: 0 auto; display: flex; align-items: center; gap: 12px; }
+    .crest {
+      width: 44px; height: 44px; flex: 0 0 auto; border-radius: 12px;
+      background: linear-gradient(135deg, #7c3aed, #b06bff);
+      display: grid; place-items: center; font-size: 24px;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15), 0 6px 16px rgba(124,58,237,0.5);
+    }
+    .titles h1 { margin: 0; font-size: 1.12rem; letter-spacing: 0.2px; line-height: 1.1; }
+    .titles p { margin: 2px 0 0; color: var(--muted); font-size: 0.74rem; }
+    .score-badge {
+      margin-left: auto; text-align: right; line-height: 1.05;
+    }
+    .score-badge .val {
+      font-size: 1.5rem; font-weight: 800; color: var(--gold);
+      text-shadow: 0 0 18px rgba(255,213,74,0.35);
+      font-variant-numeric: tabular-nums;
+    }
+    .score-badge .lbl { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+
+    main { max-width: 780px; margin: 0 auto; padding: 16px 16px calc(90px + env(safe-area-inset-bottom)); }
+
+    /* ---------- Rank bar ---------- */
+    .rank {
+      background: linear-gradient(135deg, var(--panel), var(--panel-2));
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 12px 14px; box-shadow: var(--shadow);
+    }
+    .rank-top { display: flex; align-items: center; gap: 10px; }
+    .rank-emoji { font-size: 1.5rem; }
+    .rank-name { font-weight: 700; }
+    .rank-name small { display:block; color: var(--muted); font-weight: 400; font-size: 0.72rem; }
+    .rank-next { margin-left: auto; text-align: right; font-size: 0.72rem; color: var(--muted); }
+    .bar { height: 9px; border-radius: 99px; background: rgba(255,255,255,0.08); margin-top: 10px; overflow: hidden; }
+    .bar > i { display: block; height: 100%; border-radius: 99px;
+      background: linear-gradient(90deg, var(--gold-2), var(--gold)); box-shadow: 0 0 14px rgba(255,213,74,0.5); transition: width .5s cubic-bezier(.2,.8,.2,1); }
+
+    /* ---------- Session stats ---------- */
+    .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
+    .stat {
+      background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+      border-radius: 12px; padding: 8px 6px; text-align: center;
+    }
+    .stat .n { font-size: 1.15rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .stat .k { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); margin-top: 2px; }
+    .stat.combo .n { color: var(--gold); }
+    .stat.combo.live { animation: pop .35s ease; }
+
+    /* ---------- Section headings ---------- */
+    .sec-h { display: flex; align-items: center; gap: 8px; margin: 22px 2px 10px; }
+    .sec-h h2 { margin: 0; font-size: 0.82rem; letter-spacing: 1.4px; text-transform: uppercase; color: var(--muted); }
+    .sec-h .line { flex: 1; height: 1px; background: var(--border); }
+    .sec-h .act { font-size: 0.74rem; color: var(--accent); cursor: pointer; user-select: none; }
+
+    /* ---------- Context bar ---------- */
+    .context { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+    .chip {
+      border: 1px solid var(--border); background: rgba(255,255,255,0.03);
+      color: var(--text); border-radius: 99px; padding: 6px 11px; font-size: 0.78rem;
+      cursor: pointer; user-select: none; transition: .15s; white-space: nowrap;
+    }
+    .chip:active { transform: scale(.96); }
+    .chip.on { background: linear-gradient(135deg, var(--accent-2), var(--accent)); border-color: transparent; color: #fff; font-weight: 600; box-shadow: 0 4px 14px rgba(124,58,237,0.45); }
+    .chip.mult.on { background: linear-gradient(135deg, var(--gold-2), var(--gold)); color: #3a2600; }
+    .context-lbl { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); width: 100%; margin: 6px 2px 0; }
+
+    /* ---------- Bounty grid ---------- */
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
+    .bounty {
+      position: relative; overflow: hidden;
+      background: linear-gradient(160deg, var(--panel), var(--panel-2));
+      border: 1px solid var(--border); border-radius: 14px;
+      padding: 12px 8px 10px; text-align: center; cursor: pointer;
+      transition: transform .12s ease, box-shadow .12s ease, border-color .12s;
+    }
+    .bounty:active { transform: scale(.95); }
+    .bounty::before {
+      content: ""; position: absolute; inset: 0 0 auto 0; height: 3px;
+      background: var(--tier, var(--accent));
+    }
+    .bounty .emoji { font-size: 1.9rem; line-height: 1; filter: drop-shadow(0 3px 6px rgba(0,0,0,.4)); }
+    .bounty .nm { font-size: 0.78rem; font-weight: 600; margin-top: 6px; min-height: 2.2em; display: grid; align-items: center; }
+    .bounty .pts { margin-top: 4px; font-size: 0.72rem; font-weight: 800; color: var(--gold); }
+    .bounty .pts small { color: var(--muted); font-weight: 500; }
+    .bounty .cnt {
+      position: absolute; top: 6px; right: 6px; min-width: 18px; height: 18px; padding: 0 5px;
+      border-radius: 99px; background: rgba(0,0,0,0.4); border: 1px solid var(--border);
+      font-size: 0.62rem; font-weight: 700; display: grid; place-items: center; color: var(--muted);
+    }
+    .bounty .cnt.has { color: var(--gold); border-color: var(--gold-2); }
+    .bounty.add { display: grid; place-items: center; border-style: dashed; color: var(--muted); }
+    .bounty.add .emoji { font-size: 1.4rem; }
+
+    /* floating +points */
+    .float {
+      position: fixed; z-index: 60; pointer-events: none; font-weight: 900;
+      font-size: 1.4rem; color: var(--gold); text-shadow: 0 2px 10px rgba(0,0,0,.6);
+      animation: floatUp 1s ease-out forwards;
+    }
+    @keyframes floatUp { 0% { opacity: 0; transform: translateY(6px) scale(.8); } 15% { opacity: 1; } 100% { opacity: 0; transform: translateY(-46px) scale(1.15); } }
+    @keyframes pop { 0% { transform: scale(1);} 40% { transform: scale(1.18);} 100% { transform: scale(1);} }
+
+    /* ---------- Log ---------- */
+    .log { display: flex; flex-direction: column; gap: 8px; }
+    .log-item {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+      border-radius: 12px; padding: 8px 10px;
+    }
+    .log-item .le { font-size: 1.35rem; flex: 0 0 auto; }
+    .log-item .lm { flex: 1; min-width: 0; }
+    .log-item .lm .t { font-weight: 600; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .log-item .lm .s { font-size: 0.7rem; color: var(--muted); }
+    .log-item .lp { font-weight: 800; color: var(--gold); font-variant-numeric: tabular-nums; }
+    .log-item .del {
+      flex: 0 0 auto; border: none; background: transparent; color: var(--muted);
+      font-size: 1.1rem; cursor: pointer; padding: 4px 6px; border-radius: 8px;
+    }
+    .log-item .del:active { background: rgba(255,107,107,0.15); color: var(--danger); }
+    .tag { display:inline-block; font-size: 0.62rem; padding: 1px 7px; border-radius: 99px; background: rgba(176,107,255,0.18); border: 1px solid var(--border); color: var(--muted); margin-right: 4px; }
+    .tag.mult { background: rgba(255,213,74,0.16); color: var(--gold); border-color: var(--gold-2); }
+
+    .empty { text-align: center; color: var(--muted); padding: 26px 10px; font-size: 0.86rem; }
+    .empty .big { font-size: 2rem; display: block; margin-bottom: 6px; }
+
+    /* ---------- Breakdown ---------- */
+    .brk { display: flex; flex-direction: column; gap: 7px; }
+    .brk-row { display: grid; grid-template-columns: 26px 1fr auto; align-items: center; gap: 10px; }
+    .brk-row .be { font-size: 1.15rem; }
+    .brk-row .bn { font-size: 0.82rem; }
+    .brk-row .track { grid-column: 2 / 4; height: 7px; border-radius: 99px; background: rgba(255,255,255,0.07); overflow: hidden; }
+    .brk-row .track > i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent-2), var(--accent)); }
+    .brk-meta { display: grid; grid-template-columns: 26px 1fr auto; gap: 10px; font-size: 0.72rem; color: var(--muted); }
+
+    /* ---------- Achievements ---------- */
+    .ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap: 8px; }
+    .ach {
+      display: flex; gap: 9px; align-items: center;
+      border: 1px solid var(--border); border-radius: 12px; padding: 9px 10px;
+      background: rgba(255,255,255,0.03); opacity: 0.5; transition: .3s;
+    }
+    .ach.got { opacity: 1; background: linear-gradient(135deg, rgba(124,58,237,0.25), rgba(176,107,255,0.12)); border-color: var(--accent); }
+    .ach .ae { font-size: 1.4rem; }
+    .ach .at { font-size: 0.76rem; font-weight: 700; }
+    .ach .ad { font-size: 0.66rem; color: var(--muted); }
+
+    /* ---------- Footer actions ---------- */
+    .footer-acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 24px; }
+    button.btn {
+      flex: 1; min-width: 120px; border: 1px solid var(--border); background: rgba(255,255,255,0.04);
+      color: var(--text); padding: 11px; border-radius: 12px; font-size: 0.82rem; font-weight: 600; cursor: pointer;
+    }
+    button.btn:active { transform: scale(.98); }
+    button.btn.danger { color: var(--danger); border-color: rgba(255,107,107,0.4); }
+    .fineprint { color: var(--muted); font-size: 0.72rem; text-align: center; margin-top: 22px; line-height: 1.6; }
+
+    /* ---------- Toast ---------- */
+    #toast {
+      position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(20px);
+      background: linear-gradient(135deg, var(--accent-2), var(--accent)); color: #fff;
+      padding: 11px 18px; border-radius: 99px; font-size: 0.85rem; font-weight: 600;
+      box-shadow: var(--shadow); opacity: 0; pointer-events: none; transition: .3s; z-index: 80; max-width: 90vw; text-align: center;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #toast.gold { background: linear-gradient(135deg, var(--gold-2), var(--gold)); color: #3a2600; }
+
+    /* ---------- Modal ---------- */
+    .modal-bg { position: fixed; inset: 0; background: rgba(8,3,18,0.7); backdrop-filter: blur(3px); display: none; place-items: center; z-index: 90; padding: 18px; }
+    .modal-bg.show { display: grid; }
+    .modal { background: var(--panel); border: 1px solid var(--border); border-radius: 18px; padding: 18px; width: 100%; max-width: 380px; box-shadow: var(--shadow); }
+    .modal h3 { margin: 0 0 4px; }
+    .modal p { margin: 0 0 14px; color: var(--muted); font-size: 0.82rem; }
+    .modal label { display:block; font-size: 0.72rem; color: var(--muted); margin: 10px 0 4px; }
+    .modal input, .modal select {
+      width: 100%; padding: 10px; border-radius: 10px; border: 1px solid var(--border);
+      background: var(--bg-2); color: var(--text); font-size: 0.9rem;
+    }
+    .emoji-pick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+    .emoji-pick span { font-size: 1.3rem; padding: 5px; border-radius: 8px; cursor: pointer; border: 1px solid transparent; }
+    .emoji-pick span.on { border-color: var(--accent); background: rgba(176,107,255,0.18); }
+    .modal-acts { display: flex; gap: 8px; margin-top: 16px; }
+
+    @media (max-width: 400px) {
+      .stat-row { grid-template-columns: repeat(2, 1fr); }
+      .bounty .nm { font-size: 0.72rem; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="head-wrap">
+      <div class="crest">🏰</div>
+      <div class="titles">
+        <h1>Wrong Park Patrol</h1>
+        <p>Score points for spotting rival-park attire 👀</p>
+      </div>
+      <div class="score-badge">
+        <div class="val" id="totalScore">0</div>
+        <div class="lbl">Total pts</div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Rank -->
+    <section class="rank">
+      <div class="rank-top">
+        <span class="rank-emoji" id="rankEmoji">🎒</span>
+        <div class="rank-name" id="rankName">Park Newbie<small id="rankSub">Every legend starts somewhere</small></div>
+        <div class="rank-next" id="rankNext"></div>
+      </div>
+      <div class="bar"><i id="rankBar" style="width:0%"></i></div>
+
+      <div class="stat-row">
+        <div class="stat"><div class="n" id="sPts">0</div><div class="k">Session pts</div></div>
+        <div class="stat"><div class="n" id="sSpots">0</div><div class="k">Spots today</div></div>
+        <div class="stat combo" id="comboStat"><div class="n" id="sCombo">1×</div><div class="k">Combo</div></div>
+        <div class="stat"><div class="n" id="sBest">0</div><div class="k">Best spot</div></div>
+      </div>
+    </section>
+
+    <!-- Context -->
+    <div class="sec-h"><h2>Set the scene</h2><span class="line"></span></div>
+    <div class="context" id="parkChips">
+      <span class="context-lbl">Which park are you in?</span>
+    </div>
+    <div class="context" id="multChips">
+      <span class="context-lbl">Bonus multipliers (tap to arm)</span>
+    </div>
+
+    <!-- Bounties -->
+    <div class="sec-h"><h2>Tap what you spotted</h2><span class="line"></span><span class="act" id="addBountyBtn">+ Custom</span></div>
+    <div class="grid" id="bountyGrid"></div>
+
+    <!-- Log -->
+    <div class="sec-h"><h2>Spot log</h2><span class="line"></span><span class="act" id="undoBtn">↩︎ Undo</span></div>
+    <div class="log" id="log"></div>
+
+    <!-- Breakdown -->
+    <div class="sec-h"><h2>Bounty breakdown</h2><span class="line"></span></div>
+    <div class="brk" id="breakdown"></div>
+
+    <!-- Achievements -->
+    <div class="sec-h"><h2>Badges</h2><span class="line"></span></div>
+    <div class="ach-grid" id="achievements"></div>
+
+    <!-- Actions -->
+    <div class="footer-acts">
+      <button class="btn" id="shareBtn">📣 Share score</button>
+      <button class="btn" id="newSessionBtn">🌅 New day / session</button>
+      <button class="btn danger" id="clearBtn">🗑️ Reset everything</button>
+    </div>
+
+    <p class="fineprint">
+      A friendly “I-Spy” for theme-park nerds. It only rewards <b>non-Disney</b> franchises —
+      Star&nbsp;Wars, Marvel, Pixar, Avatar &amp; Indiana&nbsp;Jones are all Disney, so they don't count!<br>
+      Everything is saved on this device only. No accounts, no tracking, no server.
+    </p>
+  </main>
+
+  <div id="toast"></div>
+
+  <!-- Custom bounty modal -->
+  <div class="modal-bg" id="modalBg">
+    <div class="modal">
+      <h3>Add a custom bounty</h3>
+      <p>Spotted a franchise that isn't listed? Add your own.</p>
+      <label>Name</label>
+      <input id="mName" placeholder="e.g. Star Trek, One Piece, Formula 1…" maxlength="28" />
+      <label>Points</label>
+      <select id="mPoints">
+        <option value="10">Common — 10 pts</option>
+        <option value="15">Uncommon — 15 pts</option>
+        <option value="25" selected>Rare — 25 pts</option>
+        <option value="40">Legendary — 40 pts</option>
+      </select>
+      <label>Icon</label>
+      <div class="emoji-pick" id="emojiPick"></div>
+      <div class="modal-acts">
+        <button class="btn" id="mCancel">Cancel</button>
+        <button class="btn" id="mSave" style="background:linear-gradient(135deg,var(--accent-2),var(--accent));border-color:transparent;color:#fff;">Add bounty</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    "use strict";
+    const KEY = "wrongParkPatrol.v1";
+    const $ = (s) => document.querySelector(s);
+
+    // -------- Default bounties (rival parks / franchises) --------
+    // tiers: common 10, uncommon 15, rare 25, legendary 40
+    const DEFAULTS = [
+      { id: "hp",     nm: "Harry Potter / Hogwarts", e: "🧙", p: 10 },
+      { id: "univ",   nm: "Universal Studios logo",  e: "🎬", p: 10 },
+      { id: "minion", nm: "Minions",                 e: "🍌", p: 15 },
+      { id: "mario",  nm: "Super Mario",             e: "🍄", p: 15 },
+      { id: "pokemon",nm: "Pokémon",                 e: "⚡", p: 15 },
+      { id: "jp",     nm: "Jurassic Park",           e: "🦕", p: 20 },
+      { id: "sonic",  nm: "Sonic",                   e: "💙", p: 20 },
+      { id: "dc",     nm: "DC / Batman / Superman",  e: "🦇", p: 20 },
+      { id: "nintendo",nm:"Zelda / Nintendo",        e: "🗡️", p: 20 },
+      { id: "anime",  nm: "Anime (general)",         e: "🍥", p: 20 },
+      { id: "lego",   nm: "LEGO / Legoland",         e: "🧱", p: 25 },
+      { id: "transf", nm: "Transformers",            e: "🤖", p: 25 },
+      { id: "ghibli", nm: "Studio Ghibli / Totoro",  e: "🌱", p: 30 },
+      { id: "seaworld",nm:"SeaWorld / Busch Gardens",e: "🐬", p: 30 },
+      { id: "sixflags",nm:"Six Flags",               e: "🎢", p: 40 },
+    ];
+
+    const PARKS = [
+      { id: "mk",  nm: "Magic Kingdom" },
+      { id: "ep",  nm: "EPCOT" },
+      { id: "hs",  nm: "Hollywood Studios" },
+      { id: "ak",  nm: "Animal Kingdom" },
+      { id: "ds",  nm: "Disney Springs" },
+      { id: "oth", nm: "Elsewhere" },
+    ];
+
+    const MULTS = [
+      { id: "full",  nm: "🧍 Head-to-toe fit", x: 2 },
+      { id: "group", nm: "👨‍👩‍👧 Whole group", x: 1.5 },
+      { id: "queue", nm: "🎢 In a ride queue", x: 1.5 },
+    ];
+
+    const ACHIEVEMENTS = [
+      { id: "first",   e: "👀", t: "First Spot",      d: "Log your very first sighting" },
+      { id: "combo3",  e: "🔥", t: "On a Roll",       d: "Hit a 3× combo" },
+      { id: "century", e: "💯", t: "Century Club",    d: "Reach 100 total points" },
+      { id: "variety", e: "🌈", t: "Variety Hunter",  d: "Spot 6 different franchises" },
+      { id: "legend",  e: "🏆", t: "Legendary Catch", d: "Bag a 40-pt legendary spot" },
+      { id: "day10",   e: "📸", t: "Busy Day",        d: "Log 10 spots in one session" },
+      { id: "potter",  e: "🧙", t: "Muggle Radar",    d: "Spot 5 Harry Potter fans" },
+      { id: "grand",   e: "👑", t: "Grand Marshal",   d: "Reach 500 total points" },
+    ];
+
+    const RANKS = [
+      { min: 0,    e: "🎒", n: "Park Newbie",        s: "Every legend starts somewhere" },
+      { min: 50,   e: "🧢", n: "Souvenir Scout",     s: "Your eyes are warming up" },
+      { min: 150,  e: "🔎", n: "Bounty Hunter",      s: "No rival tee escapes you" },
+      { min: 350,  e: "🕵️", n: "Franchise Detective", s: "You spot logos from 50 ft" },
+      { min: 700,  e: "🏆", n: "Master Spotter",     s: "The parks fear your gaze" },
+      { min: 1500, e: "🦅", n: "Legendary Eagle-Eye", s: "Nothing gets past you" },
+    ];
+
+    const EMOJI_CHOICES = ["🎯","🚀","⭐","🎮","🧟","🐲","🦸","🎃","🐰","🐭","🚂","🛸","🏴‍☠️","🎸","⚽","🏎️","🍿","👽","🦖","🧛","🐢","🌟"];
+
+    // -------- State --------
+    let state = load();
+
+    function load() {
+      try {
+        const raw = localStorage.getItem(KEY);
+        if (raw) {
+          const s = JSON.parse(raw);
+          s.spots = s.spots || [];
+          s.custom = s.custom || [];
+          s.achieved = s.achieved || {};
+          s.sessionStart = s.sessionStart || Date.now();
+          s.ctx = s.ctx || { park: "mk", mults: {} };
+          s.ctx.mults = s.ctx.mults || {};
+          return s;
+        }
+      } catch (e) { /* ignore corrupt data */ }
+      return { spots: [], custom: [], achieved: {}, sessionStart: Date.now(), ctx: { park: "mk", mults: {} } };
+    }
+    function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+
+    function allBounties() { return DEFAULTS.concat(state.custom); }
+    function bountyById(id) { return allBounties().find(b => b.id === id); }
+
+    // in-memory combo (per burst of spotting)
+    let combo = 1, lastSpotAt = 0;
+    const COMBO_WINDOW = 90 * 1000; // 90s
+
+    // -------- Rendering --------
+    function fmtTime(ts) {
+      const d = new Date(ts), now = new Date();
+      const diff = (now - d) / 1000;
+      if (diff < 60) return "just now";
+      if (diff < 3600) return Math.floor(diff / 60) + "m ago";
+      if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+      return d.toLocaleDateString([], { month: "short", day: "numeric" });
+    }
+    function parkName(id) { const p = PARKS.find(p => p.id === id); return p ? p.nm : ""; }
+
+    function totalPoints() { return state.spots.reduce((a, s) => a + s.pts, 0); }
+
+    function sessionSpots() { return state.spots.filter(s => s.ts >= state.sessionStart); }
+
+    function renderScore() {
+      const total = totalPoints();
+      animateNumber($("#totalScore"), total);
+      // rank
+      let rank = RANKS[0], next = null;
+      for (let i = 0; i < RANKS.length; i++) {
+        if (total >= RANKS[i].min) { rank = RANKS[i]; next = RANKS[i + 1] || null; }
+      }
+      $("#rankEmoji").textContent = rank.e;
+      $("#rankName").firstChild.textContent = rank.n;
+      $("#rankSub").textContent = rank.s;
+      if (next) {
+        const span = next.min - rank.min, prog = total - rank.min;
+        $("#rankBar").style.width = Math.min(100, (prog / span) * 100) + "%";
+        $("#rankNext").innerHTML = (next.min - total) + " pts to<br><b>" + next.n + "</b> " + next.e;
+      } else {
+        $("#rankBar").style.width = "100%";
+        $("#rankNext").innerHTML = "Max rank! 🎉";
+      }
+      // session stats
+      const sess = sessionSpots();
+      $("#sPts").textContent = sess.reduce((a, s) => a + s.pts, 0);
+      $("#sSpots").textContent = sess.length;
+      $("#sBest").textContent = sess.length ? Math.max.apply(null, sess.map(s => s.pts)) : 0;
+      $("#sCombo").textContent = combo + "×";
+    }
+
+    function renderBounties() {
+      const grid = $("#bountyGrid");
+      grid.innerHTML = "";
+      const counts = {};
+      state.spots.forEach(s => { counts[s.bid] = (counts[s.bid] || 0) + 1; });
+      allBounties().forEach(b => {
+        const el = document.createElement("div");
+        el.className = "bounty";
+        el.style.setProperty("--tier", tierColor(b.p));
+        const c = counts[b.id] || 0;
+        el.innerHTML =
+          '<span class="cnt' + (c ? " has" : "") + '">' + c + '</span>' +
+          '<div class="emoji">' + b.e + '</div>' +
+          '<div class="nm">' + escapeHtml(b.nm) + '</div>' +
+          '<div class="pts">+' + b.p + ' <small>pts</small></div>';
+        el.addEventListener("click", (ev) => logSpot(b, ev));
+        grid.appendChild(el);
+      });
+      // add-custom tile
+      const add = document.createElement("div");
+      add.className = "bounty add";
+      add.innerHTML = '<div class="emoji">➕</div><div class="nm">Add custom</div>';
+      add.addEventListener("click", openModal);
+      grid.appendChild(add);
+    }
+
+    function tierColor(p) {
+      if (p >= 40) return "var(--t-legendary)";
+      if (p >= 25) return "var(--t-rare)";
+      if (p >= 15) return "var(--t-uncommon)";
+      return "var(--t-common)";
+    }
+
+    function renderContext() {
+      const pc = $("#parkChips");
+      pc.querySelectorAll(".chip").forEach(n => n.remove());
+      PARKS.forEach(p => {
+        const c = document.createElement("span");
+        c.className = "chip" + (state.ctx.park === p.id ? " on" : "");
+        c.textContent = p.nm;
+        c.addEventListener("click", () => { state.ctx.park = p.id; save(); renderContext(); });
+        pc.appendChild(c);
+      });
+      const mc = $("#multChips");
+      mc.querySelectorAll(".chip").forEach(n => n.remove());
+      MULTS.forEach(m => {
+        const c = document.createElement("span");
+        c.className = "chip mult" + (state.ctx.mults[m.id] ? " on" : "");
+        c.textContent = m.nm + " ×" + m.x;
+        c.addEventListener("click", () => {
+          state.ctx.mults[m.id] = !state.ctx.mults[m.id]; save(); renderContext();
+        });
+        mc.appendChild(c);
+      });
+    }
+
+    function activeMultiplier() {
+      let x = 1;
+      MULTS.forEach(m => { if (state.ctx.mults[m.id]) x *= m.x; });
+      return x;
+    }
+
+    function renderLog() {
+      const log = $("#log");
+      log.innerHTML = "";
+      if (!state.spots.length) {
+        log.innerHTML = '<div class="empty"><span class="big">🔭</span>No spots yet. Go find someone repping the <i>wrong</i> park!</div>';
+        return;
+      }
+      state.spots.slice().reverse().slice(0, 25).forEach(s => {
+        const b = bountyById(s.bid) || { e: "❓", nm: s.nm || "Spot" };
+        const el = document.createElement("div");
+        el.className = "log-item";
+        let tags = "";
+        if (s.park) tags += '<span class="tag">' + escapeHtml(parkName(s.park)) + '</span>';
+        if (s.mult && s.mult > 1) tags += '<span class="tag mult">×' + s.mult + '</span>';
+        if (s.combo && s.combo > 1) tags += '<span class="tag mult">combo ' + s.combo + '×</span>';
+        el.innerHTML =
+          '<span class="le">' + b.e + '</span>' +
+          '<div class="lm"><div class="t">' + escapeHtml(b.nm) + '</div>' +
+          '<div class="s">' + tags + fmtTime(s.ts) + '</div></div>' +
+          '<span class="lp">+' + s.pts + '</span>' +
+          '<button class="del" title="Delete" aria-label="Delete">✕</button>';
+        el.querySelector(".del").addEventListener("click", () => deleteSpot(s.id));
+        log.appendChild(el);
+      });
+    }
+
+    function renderBreakdown() {
+      const wrap = $("#breakdown");
+      wrap.innerHTML = "";
+      if (!state.spots.length) { wrap.innerHTML = '<div class="empty">Your most-spotted franchises will chart here.</div>'; return; }
+      const agg = {};
+      state.spots.forEach(s => {
+        const b = bountyById(s.bid) || { e: "❓", nm: s.nm || "Spot" };
+        if (!agg[s.bid]) agg[s.bid] = { e: b.e, nm: b.nm, count: 0, pts: 0 };
+        agg[s.bid].count++; agg[s.bid].pts += s.pts;
+      });
+      const rows = Object.values(agg).sort((a, b) => b.pts - a.pts);
+      const max = Math.max.apply(null, rows.map(r => r.pts));
+      rows.forEach(r => {
+        const row = document.createElement("div");
+        row.className = "brk-row";
+        row.innerHTML =
+          '<span class="be">' + r.e + '</span>' +
+          '<span class="bn">' + escapeHtml(r.nm) + '</span>' +
+          '<span class="bp" style="font-size:.78rem;font-weight:700;color:var(--gold)">' + r.pts + ' pts</span>' +
+          '<div class="track"><i style="width:' + Math.max(6, (r.pts / max) * 100) + '%"></i></div>';
+        wrap.appendChild(row);
+        const meta = document.createElement("div");
+        meta.className = "brk-meta";
+        meta.innerHTML = '<span></span><span>' + r.count + ' spotted</span><span></span>';
+        wrap.appendChild(meta);
+      });
+    }
+
+    function renderAchievements() {
+      checkAchievements();
+      const wrap = $("#achievements");
+      wrap.innerHTML = "";
+      ACHIEVEMENTS.forEach(a => {
+        const el = document.createElement("div");
+        el.className = "ach" + (state.achieved[a.id] ? " got" : "");
+        el.innerHTML = '<span class="ae">' + a.e + '</span><div><div class="at">' + a.t + '</div><div class="ad">' + a.d + '</div></div>';
+        wrap.appendChild(el);
+      });
+    }
+
+    function computeAchievements() {
+      const total = totalPoints();
+      const distinct = new Set(state.spots.map(s => s.bid)).size;
+      const potter = state.spots.filter(s => s.bid === "hp").length;
+      const sess = sessionSpots().length;
+      const hadLegendary = state.spots.some(s => s.pts >= 40);
+      const hadCombo3 = state.spots.some(s => (s.combo || 1) >= 3);
+      return {
+        first: state.spots.length >= 1,
+        combo3: hadCombo3,
+        century: total >= 100,
+        variety: distinct >= 6,
+        legend: hadLegendary,
+        day10: sess >= 10,
+        potter: potter >= 5,
+        grand: total >= 500,
+      };
+    }
+
+    function checkAchievements(announce) {
+      const now = computeAchievements();
+      Object.keys(now).forEach(id => {
+        if (now[id] && !state.achieved[id]) {
+          state.achieved[id] = Date.now();
+          if (announce) {
+            const a = ACHIEVEMENTS.find(x => x.id === id);
+            toast("Badge unlocked: " + a.e + " " + a.t + "!", true);
+          }
+        }
+      });
+    }
+
+    // -------- Actions --------
+    function logSpot(b, ev) {
+      const now = Date.now();
+      if (now - lastSpotAt <= COMBO_WINDOW && lastSpotAt !== 0) combo = Math.min(combo + 1, 9);
+      else combo = 1;
+      lastSpotAt = now;
+
+      const mult = activeMultiplier();
+      const comboBonus = 1 + (combo - 1) * 0.25; // +25% per combo step
+      const pts = Math.round(b.p * mult * comboBonus);
+
+      state.spots.push({
+        id: "s" + now + Math.floor(now % 997),
+        bid: b.id, nm: b.nm, e: b.e, base: b.p, pts: pts,
+        park: state.ctx.park, mult: mult, combo: combo, ts: now,
+      });
+      save();
+
+      floatPoints(pts, ev);
+      renderAll();
+      // combo flourish
+      const cs = $("#comboStat");
+      cs.classList.remove("live"); void cs.offsetWidth; if (combo > 1) cs.classList.add("live");
+      checkAchievements(true);
+      renderAchievements();
+
+      if (combo >= 3) toast("🔥 " + combo + "× combo! +" + pts + " pts", true);
+      else toast("Nice spot! +" + pts + " pts");
+    }
+
+    function deleteSpot(id) {
+      state.spots = state.spots.filter(s => s.id !== id);
+      save(); renderAll();
+    }
+    function undoLast() {
+      if (!state.spots.length) { toast("Nothing to undo"); return; }
+      state.spots.pop(); save(); renderAll(); toast("Removed last spot");
+    }
+
+    function newSession() {
+      state.sessionStart = Date.now();
+      state.ctx.mults = {};
+      combo = 1; lastSpotAt = 0;
+      save(); renderAll(); renderContext();
+      toast("🌅 Fresh session — combos reset. Total kept!");
+    }
+
+    function clearAll() {
+      if (!confirm("Reset EVERYTHING — all spots, points and badges? This can't be undone.")) return;
+      state = { spots: [], custom: [], achieved: {}, sessionStart: Date.now(), ctx: { park: state.ctx.park, mults: {} } };
+      combo = 1; lastSpotAt = 0;
+      save(); renderAll(); renderContext();
+      toast("Wiped clean. Happy hunting!");
+    }
+
+    function share() {
+      const total = totalPoints();
+      const distinct = new Set(state.spots.map(s => s.bid)).size;
+      let rank = RANKS[0];
+      RANKS.forEach(r => { if (total >= r.min) rank = r; });
+      const text = "🏰 Wrong Park Patrol 🏰\n" + rank.e + " " + rank.n +
+        "\n" + total + " pts · " + state.spots.length + " rival-park spots · " + distinct + " franchises\nCan you beat me at Disney World?";
+      if (navigator.share) {
+        navigator.share({ title: "Wrong Park Patrol", text: text }).catch(() => {});
+      } else if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => toast("Score copied to clipboard!", true), () => toast("Couldn't copy"));
+      } else {
+        alert(text);
+      }
+    }
+
+    // -------- Custom bounty modal --------
+    let pickedEmoji = EMOJI_CHOICES[0];
+    function buildEmojiPicker() {
+      const wrap = $("#emojiPick");
+      wrap.innerHTML = "";
+      EMOJI_CHOICES.forEach((em, i) => {
+        const s = document.createElement("span");
+        s.textContent = em;
+        if (i === 0) s.classList.add("on");
+        s.addEventListener("click", () => {
+          wrap.querySelectorAll("span").forEach(x => x.classList.remove("on"));
+          s.classList.add("on"); pickedEmoji = em;
+        });
+        wrap.appendChild(s);
+      });
+    }
+    function openModal() {
+      pickedEmoji = EMOJI_CHOICES[0];
+      $("#mName").value = ""; $("#mPoints").value = "25";
+      buildEmojiPicker();
+      $("#modalBg").classList.add("show");
+      setTimeout(() => $("#mName").focus(), 50);
+    }
+    function closeModal() { $("#modalBg").classList.remove("show"); }
+    function saveCustom() {
+      const nm = $("#mName").value.trim();
+      if (!nm) { $("#mName").focus(); return; }
+      const p = parseInt($("#mPoints").value, 10) || 25;
+      state.custom.push({ id: "c" + Date.now(), nm: nm, e: pickedEmoji, p: p });
+      save(); closeModal(); renderBounties();
+      toast("Added “" + nm + "” (+" + p + ")", true);
+    }
+
+    // -------- Effects --------
+    function floatPoints(pts, ev) {
+      let x = window.innerWidth / 2, y = window.innerHeight / 2;
+      if (ev && ev.clientX) { x = ev.clientX; y = ev.clientY; }
+      const f = document.createElement("div");
+      f.className = "float"; f.textContent = "+" + pts;
+      f.style.left = (x - 14) + "px"; f.style.top = (y - 20) + "px";
+      document.body.appendChild(f);
+      setTimeout(() => f.remove(), 1000);
+    }
+
+    let toastTimer;
+    function toast(msg, gold) {
+      const t = $("#toast");
+      t.textContent = msg;
+      t.classList.toggle("gold", !!gold);
+      t.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
+    }
+
+    function animateNumber(el, target) {
+      const start = parseInt(el.textContent.replace(/\D/g, ""), 10) || 0;
+      if (start === target) { el.textContent = target; return; }
+      const dur = 500, t0 = performance.now();
+      function step(t) {
+        const k = Math.min(1, (t - t0) / dur);
+        const eased = 1 - Math.pow(1 - k, 3);
+        el.textContent = Math.round(start + (target - start) * eased);
+        if (k < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+
+    // -------- Utils --------
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    function renderAll() {
+      renderScore();
+      renderBounties();
+      renderLog();
+      renderBreakdown();
+    }
+
+    // -------- Wire up --------
+    $("#addBountyBtn").addEventListener("click", openModal);
+    $("#undoBtn").addEventListener("click", undoLast);
+    $("#newSessionBtn").addEventListener("click", newSession);
+    $("#clearBtn").addEventListener("click", clearAll);
+    $("#shareBtn").addEventListener("click", share);
+    $("#mCancel").addEventListener("click", closeModal);
+    $("#mSave").addEventListener("click", saveCustom);
+    $("#modalBg").addEventListener("click", (e) => { if (e.target === $("#modalBg")) closeModal(); });
+    $("#mName").addEventListener("keydown", (e) => { if (e.key === "Enter") saveCustom(); });
+
+    // combo decays visually if you idle — refresh the label periodically
+    setInterval(() => {
+      if (combo > 1 && Date.now() - lastSpotAt > COMBO_WINDOW) { combo = 1; renderScore(); }
+      renderLog(); // keep "x min ago" fresh
+    }, 30000);
+
+    // init
+    renderContext();
+    renderAll();
+    renderAchievements();
+  })();
+  </script>
+</body>
+</html>
