@@ -32,6 +32,12 @@ Garmin, Rapsodo, and others).
 - **Export to CSV** for analysis in a spreadsheet.
 - **Persistent** — everything is saved to your browser's local storage, so your
   data is still there when you come back.
+- **Hosel charts** (`hosel.html`) — loft and lie adjustment settings for adjustable
+  drivers, fairways, mini drivers and hybrids. Pick a club, pick the loft stamped
+  on your head, and the chart shows the playing loft, lie, face angle and (where
+  the maker publishes it) the spin change at every hosel setting. Tap a setting to
+  see it in full, and a "smallest move for…" table tells you where to go from
+  where you are. Reached from the **Hosel charts →** link in the header.
 
 No build step, no dependencies, no server.
 
@@ -46,6 +52,30 @@ To log from a photo, tap **Take / choose photo**, point at (or select) a picture
 of your launch monitor screen, and the readable numbers are filled in for you. Always
 give them a quick check before hitting **Add Shot** — OCR is best-effort and can
 misread on blurry or angled shots.
+
+### Hosel charts
+
+Open `hosel.html` (or tap **Hosel charts →** in the header). Search or filter by
+brand, pick your club, then set the loft stamped on your head and your current
+hosel setting. Clubs covered out of the box:
+
+| Club | System | Settings |
+| --- | --- | --- |
+| Titleist GT2 driver | SureFit | 16 (A1–D4) |
+| Titleist 910F fairway | SureFit Tour | 16 (A1–D4) |
+| Titleist 910 D2/D3 driver | SureFit Tour | 16 (A1–D4) |
+| TaylorMade BRNR Mini Driver Copper | 4° loft sleeve | 12 clicks |
+| TaylorMade M1 Rescue | 3° loft sleeve | 12 clicks |
+| Any TaylorMade driver/fairway, M1 onward | 4° loft sleeve | 12 clicks |
+
+Because the hosel — not the head — decides the chart, each entry lists the other
+models it covers: the Titleist charts also serve GT, TSR, TSi, TS, 917, 915 and
+913, and the TaylorMade sleeve charts cover M1 through Qi10 and later. Every
+chart is transcribed from the maker's own tuning manual where one is published,
+and the sources are linked in the app.
+
+Adding a club is a one-entry edit to the `MODELS` array near the top of the
+script in `hosel.html`; adding a brand means adding one entry to `SYSTEMS` too.
 
 ## Data & privacy
 
