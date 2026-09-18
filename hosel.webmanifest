@@ -1,0 +1,17 @@
+{
+  "name": "Hosel Charts",
+  "short_name": "Hosel",
+  "description": "Loft and lie adjustment charts for adjustable drivers, fairways, mini drivers and hybrids.",
+  "start_url": "./hosel.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f1720",
+  "theme_color": "#0f1720",
+  "icons": [
+    { "src": "hosel-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "hosel-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "hosel-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "hosel-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

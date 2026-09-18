@@ -77,6 +77,28 @@ and the sources are linked in the app.
 Adding a club is a one-entry edit to the `MODELS` array near the top of the
 script in `hosel.html`; adding a brand means adding one entry to `SYSTEMS` too.
 
+The charts install to a phone home screen on their own, separately from the
+tracker: open `hosel.html` and use **Add to Home Screen**. It gets its own icon
+(a loft sleeve with the selected setting) and opens straight to the charts,
+because `hosel.webmanifest` sets `hosel.html` as the start URL.
+
+## Deploying
+
+The site is static — every file is served as-is from the repository root, so any
+static host works.
+
+**Netlify.** `netlify.toml` is checked in with the publish directory, cache
+headers and a `/hosel` shortcut, so there is nothing to configure:
+
+- *From the Netlify UI:* **Add new site → Import an existing project → GitHub →
+  afternoongolfclub/golf**. Leave the build command empty; `netlify.toml`
+  supplies the rest. Every push to the production branch redeploys.
+- *From a terminal:* `npx netlify-cli login` then
+  `npx netlify-cli deploy --prod --dir .`
+
+**GitHub Pages** is already wired up through `.github/workflows`, and the two
+can run side by side.
+
 ## Data & privacy
 
 All data stays in your browser (via `localStorage`). Nothing is uploaded
