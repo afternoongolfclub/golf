@@ -57,6 +57,12 @@
     }
     header h1 { margin: 0; font-size: 1.5rem; letter-spacing: 0.3px; }
     header p { margin: 2px 0 0; color: var(--muted); font-size: 0.9rem; }
+    header .spacer { flex: 1; }
+    header .nav-link {
+      color: var(--muted); text-decoration: none; font-size: 0.85rem;
+      border: 1px solid var(--border); border-radius: 8px; padding: 7px 11px; white-space: nowrap;
+    }
+    header .nav-link:hover { color: var(--text); border-color: var(--muted); }
     main { max-width: 1100px; margin: 0 auto; padding: 24px 20px 60px; }
     .grid { display: grid; grid-template-columns: 360px 1fr; gap: 24px; align-items: start; }
     @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
@@ -193,6 +199,8 @@
         <h1>Golf Sim Tracker</h1>
         <p>Log your shots and track the numbers that matter.</p>
       </div>
+      <div class="spacer"></div>
+      <a class="nav-link" href="hosel.html">Hosel charts →</a>
     </div>
   </header>
 
