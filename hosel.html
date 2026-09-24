@@ -132,6 +132,7 @@
 
     /* Dial */
     .dial-wrap { display: grid; grid-template-columns: minmax(240px, 320px) 1fr; gap: 18px; align-items: start; }
+    .dial-wrap > * { min-width: 0; }
     @media (max-width: 760px) { .dial-wrap { grid-template-columns: 1fr; } }
     svg.dial { width: 100%; height: auto; }
     svg.dial .pos { cursor: pointer; }
@@ -152,6 +153,7 @@
     tbody tr:hover { background: var(--panel-2); }
     tr.on { background: rgba(67, 196, 99, 0.12); }
     tr.on td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+    .set-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
     .table-scroll { overflow-x: auto; }
     .finder td { text-align: center; }
     .finder .chip { display: inline-flex; flex-direction: column; align-items: center; line-height: 1.2; border-radius: 8px; }
@@ -259,6 +261,18 @@
       label: 'Titleist — 910F fairway ("set loft and lie independently … +1.5° upright to 0.75° flat", 16 combinations)',
       url: 'https://www.titleist.com/golf-clubs/fairways/910f'
     },
+    pingChart: {
+      label: 'PING \u2014 G430 driver page, "8-lobe hosel setting chart" (the eight settings O, +, +, \u2212, \u2212, F, F\u2212, F+ with their loft adjustment and neutral/flat lie)',
+      url: 'https://ping.com/en-us/clubs/drivers/g430-max'
+    },
+    pingSpecs: {
+      label: 'PING \u2014 G430 Max key specifications (9\u00b0/10.5\u00b0/12\u00b0, loft adjustability \u00b11.5\u00b0, average lie 58.0\u00b0, noted as the average of the five adjustable loft positions)',
+      url: 'https://ping.com/en-us/clubs/drivers/g430-max'
+    },
+    optifit: {
+      label: 'Callaway \u2014 OptiFit instructions: two cogs, 8 loft and lie combinations, loft cog marked \u22121 / S / +1 / +2 ("subtracts 1 degree from stated loft") and lie cog marked N / D',
+      url: 'https://www.callawaygolf.com/optifitinstructions'
+    },
     sfGt2: {
       label: 'Titleist — GT2 driver specs (8°/9°/10°/11°, 58.5° lie, SureFit compatible with TSR, TSi, TS)',
       url: 'https://www.titleist.com/golf-clubs/drivers/gt2'
@@ -320,6 +334,28 @@
     ['−0.5',    -0.5,   0.5 ]
   ];
 
+  // PING Trajectory Tuning 2.0 (8-lobe hosel, G410/G425/G430 drivers and fairways).
+  // Five settings sit on the neutral-lie row and three on the flat row; the sleeve
+  // marks the 1.5 degree settings with a bigger plus or a longer dash.
+  const PING8 = [
+    ['O',           0,    0  ],
+    ['+',           1,    0  ],
+    ['+ (large)',   1.5,  0  ],
+    ['\u2212',        -1,    0  ],
+    ['\u2212 (long)',  -1.5,  0  ],
+    ['F',           0,   -3  ],
+    ['F\u2212',       -1,   -3  ],
+    ['F+',          1,   -3  ]
+  ];
+
+  // Callaway OptiFit: an upper loft cog and a lower lie cog, 4 x 2 = 8 combinations.
+  const OPTIFIT = [];
+  [['\u22121', -1], ['S', 0], ['+1', 1], ['+2', 2]].forEach(([loftLabel, loft]) => {
+    [['N', 0], ['D', 2]].forEach(([lieLabel, lie]) => {
+      OPTIFIT.push([loftLabel + ' \u00b7 ' + lieLabel, loft, lie]);
+    });
+  });
+
   const SYSTEMS = {
     surefit: {
       name: 'Titleist SureFit',
@@ -368,6 +404,38 @@
       hasSpin: false,
       howTo: 'Loosen the screw in the heel until the head comes off the shaft, line the setting on the sleeve up with the mark on the back of the hosel, then tighten until you hear the click.',
       handNote: 'Sleeves are handed: a right-handed sleeve belongs on a right-handed head. The markings read the same either way.'
+    },
+    ping8: {
+      name: 'PING Trajectory Tuning 2.0',
+      tagline: '8 positions \u2014 five on the neutral-lie row, three on the flat row',
+      kind: 'list',
+      neutral: 'O',
+      positions: PING8.map(([label, loft, lie]) => ({
+        code: label, label, loft, lie, face: null, spin: null
+      })),
+      loftRange: '\u00b11.5\u00b0',
+      lieRange: 'neutral or flat',
+      step: '0.5\u00b0 between neighbouring settings',
+      hasSpin: false,
+      lieApprox: true,
+      howTo: 'Loosen the hosel screw with the PING wrench until the head comes off the shaft, turn the sleeve so the setting you want lines up with the small triangle on the heel of the head, then tighten until the wrench clicks.',
+      handNote: 'Sleeves are handed \u2014 a right-handed sleeve belongs on a right-handed head.'
+    },
+    optifit: {
+      name: 'Callaway OptiFit',
+      tagline: '8 combinations \u2014 loft cog (\u22121, S, +1, +2) turned independently of the lie cog (N, D)',
+      kind: 'list',
+      neutral: 'S \u00b7 N',
+      positions: OPTIFIT.map(([label, loft, lie]) => ({
+        code: label, label, loft, lie, face: null, spin: null
+      })),
+      loftRange: '\u22121\u00b0 to +2\u00b0',
+      lieRange: 'neutral or draw (upright)',
+      step: '1\u00b0 per loft position',
+      hasSpin: false,
+      lieApprox: true,
+      howTo: 'Loosen the screw in the heel until the head comes off the shaft. The upper cog sets loft, the lower cog sets lie; turn each to the marking you want, line the head up on the shaft and tighten until it seats.',
+      handNote: 'Sleeves are handed \u2014 a right-handed sleeve belongs on a right-handed head.'
     }
   };
 
@@ -447,6 +515,62 @@
         'The D3 is the smaller, lower-spinning head; the chart is identical, only the stated lofts differ.'
       ],
       sources: ['sfPgatss', 'sfTgw']
+    },
+    {
+      id: 'ping-g430-max',
+      brand: 'PING', name: 'G430 Max Driver', year: '2023', category: 'Driver',
+      system: 'ping8', featured: false,
+      lofts: [9, 10.5, 12], defaultLoft: 10.5,
+      specs: ['460cc', '45.75"', 'Lie 58.0\u00b0 (average)'],
+      alsoFits: ['G430 Max 10K, LST, SFT, HL', 'G425 Max / LST / SFT', 'G410 Plus / LST / SFT', 'G410\u2013G430 fairways'],
+      notes: [
+        'PING\u2019s own chart gives eight settings: <b>O, +, + (the bigger plus), \u2212, \u2212 (the longer dash)</b> on the neutral-lie row, then <b>F, F\u2212, F+</b> on the flat row. The larger symbol is the larger change.',
+        'The flat row keeps the loft change but flattens the lie \u2014 useful against a hook, or if the toe sits up at address. There is no upright setting on this hosel.',
+        'PING quotes lie as an <em>average of the five neutral positions</em> (58.0\u00b0 on the G430 Max), because the lie shifts slightly as you change loft. Treat lie here as neutral-or-flat rather than an exact number.',
+        'The G440 takes a different adapter and is not covered by this chart.'
+      ],
+      sources: ['pingChart', 'pingSpecs']
+    },
+    {
+      id: 'ping-generic',
+      brand: 'PING', name: 'Any G410 / G425 / G430 driver or fairway', year: '2019 onward', category: 'Driver / fairway',
+      system: 'ping8',
+      lofts: [9, 10.5, 12, 13.5, 14.5, 15, 16.5, 17.5, 18, 19, 20.5, 21], defaultLoft: 15,
+      specs: ['8 positions', 'Loft \u00b11.5\u00b0'],
+      alsoFits: ['Every G410, G425 and G430 driver', 'Every G410, G425 and G430 fairway'],
+      notes: [
+        'One adapter (and one chart) covers the G410, G425 and G430 drivers and fairways \u2014 pick your stated loft above.',
+        'Fairway lie angles are more upright than drivers and vary by head, so the chart shows neutral or flat rather than an absolute lie.'
+      ],
+      sources: ['pingChart']
+    },
+    {
+      id: 'callaway-optifit-driver',
+      brand: 'Callaway', name: 'Paradym / Ai Smoke Driver', year: '2023\u20132024', category: 'Driver',
+      system: 'optifit', featured: false,
+      lofts: [9, 10.5, 12], defaultLoft: 10.5,
+      specs: ['OptiFit hosel', '8 combinations'],
+      alsoFits: ['Paradym, Paradym X / Triple Diamond', 'Rogue ST', 'Epic Speed / Epic Max', 'Mavrik', 'Epic Flash', 'Rogue', 'OptiFit fairways'],
+      notes: [
+        'Two cogs turn independently: the upper one sets loft (\u22121, S, +1, +2 \u2014 S is the loft stamped on the head), the lower one sets lie (N neutral, D draw).',
+        'So a 10.5\u00b0 head reads 9.5\u00b0 at \u22121, 10.5\u00b0 at S, 11.5\u00b0 at +1 and 12.5\u00b0 at +2 \u2014 this hosel adds more loft than it takes away.',
+        'Callaway publishes the lie cog only as <b>Neutral</b> and <b>Draw</b>, with no degree figure. D is the more upright of the two, which is what fights a slice; the value shown is an estimate.',
+        'Because the cogs are independent, every loft is available in both lie settings \u2014 use the loft &amp; lie finder view.'
+      ],
+      sources: ['optifit']
+    },
+    {
+      id: 'callaway-optifit-generic',
+      brand: 'Callaway', name: 'Any OptiFit driver or fairway', year: '2018 onward', category: 'Driver / fairway',
+      system: 'optifit',
+      lofts: [9, 10.5, 12, 13.5, 15, 16.5, 18, 21], defaultLoft: 15,
+      specs: ['8 combinations', 'Loft \u22121\u00b0 to +2\u00b0'],
+      alsoFits: ['Rogue, Epic Flash, Mavrik', 'Epic Speed, Epic Max', 'Rogue ST', 'Paradym', 'Paradym Ai Smoke', 'Their matching fairways'],
+      notes: [
+        'The same two-cog OptiFit hosel runs across Callaway\u2019s drivers and fairways \u2014 pick the loft stamped on your head above.',
+        'Fairway heads use the same markings; only the stated loft differs.'
+      ],
+      sources: ['optifit']
     },
     {
       id: 'taylormade-4deg-generic',
@@ -605,16 +729,16 @@
     // View switcher
     html.push('<div class="views">');
     html.push('<button class="chip' + (state.view === 'chart' ? ' on' : '') + '" data-view="chart">Settings chart</button>');
-    if (sys.kind === 'grid') {
+    if (finderAxes(sys)) {
       html.push('<button class="chip' + (state.view === 'map' ? ' on' : '') + '" data-view="map">Loft &amp; lie finder</button>');
     }
     html.push('<button class="chip' + (state.view === 'table' ? ' on' : '') + '" data-view="table">Full table</button>');
     html.push('</div>');
 
-    if (state.view === 'map' && sys.kind !== 'grid') state.view = 'chart';
+    if (state.view === 'map' && !finderAxes(sys)) state.view = 'chart';
 
     if (state.view === 'chart') {
-      html.push(sys.kind === 'grid' ? gridHtml(sel) : dialHtml(sel));
+      html.push(sys.kind === 'grid' ? gridHtml(sel) : sys.kind === 'list' ? listHtml(sel) : dialHtml(sel));
     } else if (state.view === 'map') {
       html.push(mapHtml(sel));
     } else {
@@ -674,20 +798,38 @@
     return out.join('');
   }
 
+  // Some makers publish lie only as a word (PING's "Flat", Callaway's "Draw"),
+  // so those systems mark their lie figures as estimates.
+  function lieText(pos, sys) {
+    const base = fmtLie(pos.lie);
+    return (sys && sys.lieApprox && pos.lie !== 0) ? '\u2248' + base : base;
+  }
+
+  // The loft & lie finder only makes sense where every loft is offered in every
+  // lie, i.e. the settings form a complete grid.
+  function finderAxes(sys) {
+    const lofts = [...new Set(sys.positions.map((p) => p.loft))].sort((a, b) => a - b);
+    const lies = [...new Set(sys.positions.map((p) => p.lie))].sort((a, b) => b - a);
+    return lofts.length * lies.length === sys.positions.length ? { lofts, lies } : null;
+  }
+
   const shortLoft = (d) => (d === 0 ? 'Std' : signed(d) + '\u00b0');
-  const shortLie = (d) => (d === 0 ? 'Std' : num(Math.abs(d)) + '\u00b0 ' + (d > 0 ? 'up' : 'flat'));
+  const shortLie = (d, sys) => (d === 0 ? 'Std'
+    : (sys && sys.lieApprox ? '\u2248' : '') + num(Math.abs(d)) + '\u00b0 ' + (d > 0 ? 'up' : 'flat'));
 
   function mapHtml(sel) {
     const sys = system();
-    const lofts = [-0.75, 0, 0.75, 1.5];
-    const lies = [1.5, 0.75, 0, -0.75];
+    const axes = finderAxes(sys);
+    if (!axes) return tableHtml(sel);
+    const lofts = axes.lofts;
+    const lies = axes.lies;
     const out = [];
     out.push('<p class="sub">Pick the loft you want across the top and the lie you want down the side — the cell is the setting to dial in.</p>');
     out.push('<div class="table-scroll"><table class="finder"><thead><tr><th>Lie ↓ / Loft →</th>');
     lofts.forEach((l) => out.push('<th>' + shortLoft(l) + '</th>'));
     out.push('</tr></thead><tbody>');
     lies.forEach((lie) => {
-      out.push('<tr><th>' + shortLie(lie) + '</th>');
+      out.push('<tr><th>' + shortLie(lie, sys) + '</th>');
       lofts.forEach((l) => {
         const pos = sys.positions.find((p) => p.loft === l && p.lie === lie);
         const rl = resultLoft(pos);
@@ -698,6 +840,26 @@
       out.push('</tr>');
     });
     out.push('</tbody></table></div>');
+    return out.join('');
+  }
+
+  // Settings that are neither a grid nor a dial (PING, Callaway): plain tappable cards.
+  function listHtml(sel) {
+    const sys = system();
+    const out = ['<div class="set-list">'];
+    sys.positions.forEach((pos) => {
+      const rl = resultLoft(pos);
+      out.push('<button class="cell ' + loftClass(pos) +
+        (pos.code === sel.code ? ' on' : '') + (pos.code === sys.neutral ? ' neutral' : '') +
+        '" data-set="' + pos.code + '">' +
+        '<span class="code">' + pos.label + '</span>' +
+        (rl !== null ? '<span class="v mono">' + num(rl) + '° loft</span>' : '') +
+        '<span class="v">' + (pos.lie === 0 ? 'neutral lie' : lieText(pos, sys)) + '</span>' +
+        '</button>');
+    });
+    out.push('</div>');
+    out.push('<p class="sub" style="margin-top:12px">Every setting the hosel offers, exactly as ' +
+      model().brand + ' lists them. A warm edge adds loft, a cool edge takes it away.</p>');
     return out.join('');
   }
 
@@ -728,8 +890,10 @@
     const sys = system();
     const m = model();
     const showLie = m.stdLie !== undefined;
+    const showFace = sys.positions.some((p) => p.face !== null && p.face !== undefined);
     const out = ['<div class="table-scroll"><table><thead><tr>'];
-    out.push('<th>Setting</th><th>Loft</th><th>Change</th><th>Lie' + (showLie ? '' : ' change') + '</th><th>Face</th>');
+    out.push('<th>Setting</th><th>Loft</th><th>Change</th><th>Lie' + (showLie ? '' : ' change') + '</th>');
+    if (showFace) out.push('<th>Face</th>');
     if (sys.hasSpin) out.push('<th>Spin</th>');
     out.push('</tr></thead><tbody>');
     sys.positions.forEach((pos) => {
@@ -739,8 +903,8 @@
       out.push('<td class="pos-name">' + pos.label + (pos.code === sys.neutral ? ' ●' : '') + '</td>');
       out.push('<td class="mono">' + (rl !== null ? num(rl) + '°' : '—') + '</td>');
       out.push('<td class="mono">' + fmtLoft(pos.loft) + '</td>');
-      out.push('<td class="mono">' + (showLie ? num(rlie) + '° (' + fmtLie(pos.lie) + ')' : fmtLie(pos.lie)) + '</td>');
-      out.push('<td>' + fmtFace(pos.face, pos.faceApprox) + '</td>');
+      out.push('<td class="mono">' + (showLie ? num(rlie) + '° (' + lieText(pos, sys) + ')' : lieText(pos, sys)) + '</td>');
+      if (showFace) out.push('<td>' + fmtFace(pos.face, pos.faceApprox) + '</td>');
       if (sys.hasSpin) out.push('<td class="mono">' + fmtSpin(pos.spin) + '</td>');
       out.push('</tr>');
     });
@@ -760,12 +924,17 @@
       (rl !== null ? num(rl) + '°' : fmtLoft(sel.loft)) + '</div></div>');
     out.push('<div class="fact"><div class="k">Loft change</div><div class="val mono">' + fmtLoft(sel.loft) + '</div></div>');
     out.push('<div class="fact"><div class="k">Lie</div><div class="val mono">' +
-      (rlie !== null ? num(rlie) + '°' : fmtLie(sel.lie)) + '</div></div>');
-    out.push('<div class="fact"><div class="k">Lie change</div><div class="val">' + fmtLie(sel.lie) + '</div></div>');
-    out.push('<div class="fact"><div class="k">Face angle</div><div class="val">' + fmtFace(sel.face, sel.faceApprox) + '</div></div>');
+      (rlie !== null ? num(rlie) + '°' : lieText(sel, sys)) + '</div></div>');
+    out.push('<div class="fact"><div class="k">Lie change</div><div class="val">' + lieText(sel, sys) + '</div></div>');
+    if (sel.face !== null && sel.face !== undefined) {
+      out.push('<div class="fact"><div class="k">Face angle</div><div class="val">' + fmtFace(sel.face, sel.faceApprox) + '</div></div>');
+    }
     if (sys.hasSpin) out.push('<div class="fact"><div class="k">Spin</div><div class="val mono">' + fmtSpin(sel.spin) + '</div></div>');
     out.push('</div>');
-    if (m.stdLie === undefined) {
+    if (sys.lieApprox) {
+      out.push('<p class="warn">' + m.brand + ' publishes this hosel’s lie as a word — ' + sys.lieRange +
+        ' — rather than a figure, so the degrees shown are an estimate of the direction and size of the change.</p>');
+    } else if (m.stdLie === undefined) {
       out.push('<p class="warn">' + m.brand + ' publishes this model’s lie per head, and it moves with loft, so only the change is shown here. Add it to the lie for your own head to get the playing number.</p>');
     }
     out.push('</div>');

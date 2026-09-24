@@ -67,12 +67,22 @@ hosel setting. Clubs covered out of the box:
 | TaylorMade BRNR Mini Driver Copper | 4° loft sleeve | 12 clicks |
 | TaylorMade M1 Rescue | 3° loft sleeve | 12 clicks |
 | Any TaylorMade driver/fairway, M1 onward | 4° loft sleeve | 12 clicks |
+| PING G430 Max driver | Trajectory Tuning 2.0 | 8 |
+| Any PING G410/G425/G430 driver or fairway | Trajectory Tuning 2.0 | 8 |
+| Callaway Paradym / Ai Smoke driver | OptiFit | 8 (4 loft × 2 lie) |
+| Any Callaway OptiFit driver or fairway | OptiFit | 8 (4 loft × 2 lie) |
 
 Because the hosel — not the head — decides the chart, each entry lists the other
 models it covers: the Titleist charts also serve GT, TSR, TSi, TS, 917, 915 and
-913, and the TaylorMade sleeve charts cover M1 through Qi10 and later. Every
-chart is transcribed from the maker's own tuning manual where one is published,
-and the sources are linked in the app.
+913; the TaylorMade sleeve charts cover M1 through Qi10 and later; the PING chart
+covers every G410, G425 and G430; and the Callaway chart covers every OptiFit
+driver and fairway from the Rogue on. Every chart is transcribed from the maker's
+own tuning manual, settings chart or fitting instructions, and the sources are
+linked in the app.
+
+Where a maker publishes lie as a word rather than a number — PING's *Flat*,
+Callaway's *Draw* — the app says so and marks the degrees as an estimate (`≈`)
+instead of inventing precision.
 
 Adding a club is a one-entry edit to the `MODELS` array near the top of the
 script in `hosel.html`; adding a brand means adding one entry to `SYSTEMS` too.
