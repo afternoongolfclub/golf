@@ -9,7 +9,14 @@
   <link rel="icon" href="icon-192.png" sizes="192x192" type="image/png" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <link rel="manifest" href="manifest.webmanifest" />
-  <meta name="theme-color" content="#0f1720" />
+  <meta name="theme-color" content="#f2f6fa" id="themeColor" />
+  <script>
+    // Applied before first paint so a dark-mode user never sees a white flash.
+    try {
+      var saved = localStorage.getItem('hoselCharts.theme');
+      if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    } catch (e) { /* private mode — light theme it is */ }
+  </script>
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -17,17 +24,48 @@
 
   <style>
     :root {
-      --bg: #0f1720;
-      --panel: #17212b;
-      --panel-2: #1e2b38;
-      --border: #2b3a49;
-      --text: #e6edf3;
-      --muted: #8b9bb0;
-      --accent: #43c463;
-      --accent-2: #2f9e4a;
-      --loft-up: #f0a54a;
-      --loft-down: #6aa9f0;
-      --shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+      --bg: #f2f6fa;
+      --panel: #ffffff;
+      --panel-2: #edf2f7;
+      --border: #d5dee7;
+      --text: #15212d;
+      --muted: #5b6c7e;
+      --accent: #0f8a40;
+      --accent-2: #0b6c32;
+      --on-accent: #ffffff;
+      --accent-soft: rgba(15, 138, 64, 0.12);
+      --link: #0c7a3a;
+      --loft-up: #d77a1c;
+      --loft-down: #2f74c8;
+      --tint-up: #fdf3e6;
+      --tint-down: #eaf1fb;
+      --header-1: #ffffff;
+      --header-2: #e7eff7;
+      --ball-ring: rgba(21, 33, 45, 0.16);
+      --shadow: 0 2px 12px rgba(18, 38, 58, 0.09);
+    }
+    /* Kept for the simulator bay at night — the sun/moon button in the header
+       switches to it, and the choice is remembered on the device. */
+    :root[data-theme="dark"] {
+      --bg: #101a24;
+      --panel: #182533;
+      --panel-2: #21303f;
+      --border: #32465a;
+      --text: #e8eff6;
+      --muted: #9aadc0;
+      --accent: #4ad06b;
+      --accent-2: #35ab54;
+      --on-accent: #06210f;
+      --accent-soft: rgba(74, 208, 107, 0.15);
+      --link: #5bd97a;
+      --loft-up: #f2ac55;
+      --loft-down: #74b1f5;
+      --tint-up: #2c2417;
+      --tint-down: #19232f;
+      --header-1: #16222e;
+      --header-2: #101a24;
+      --ball-ring: rgba(0, 0, 0, 0.3);
+      --shadow: 0 4px 20px rgba(0, 0, 0, 0.38);
     }
     * { box-sizing: border-box; }
     body {
@@ -38,7 +76,7 @@
       line-height: 1.5;
     }
     header {
-      background: linear-gradient(135deg, #14202b, #0f1720);
+      background: linear-gradient(135deg, var(--header-1), var(--header-2));
       border-bottom: 1px solid var(--border);
       padding: 20px;
     }
@@ -46,7 +84,7 @@
     .logo {
       width: 42px; height: 42px; border-radius: 50%;
       background: radial-gradient(circle at 32% 30%, #ffffff, #d7dde3 55%, #aab4bd);
-      box-shadow: inset -3px -3px 6px rgba(0,0,0,0.25);
+      box-shadow: inset -3px -3px 6px rgba(0,0,0,0.25), 0 0 0 1px var(--ball-ring);
       flex-shrink: 0; position: relative;
     }
     .logo::after {
@@ -55,6 +93,12 @@
       background-size: 7px 7px;
     }
     header h1 { margin: 0; font-size: 1.4rem; letter-spacing: 0.3px; }
+    header .spacer { flex: 1; }
+    .theme-btn {
+      background: transparent; border: 1px solid var(--border); color: var(--muted);
+      border-radius: 8px; padding: 7px 10px; font-size: 1rem; line-height: 1; cursor: pointer;
+    }
+    .theme-btn:hover { color: var(--text); border-color: var(--muted); }
     header p { margin: 2px 0 0; color: var(--muted); font-size: 0.88rem; }
 
     main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 60px; }
@@ -79,7 +123,7 @@
       border-radius: 999px; padding: 6px 13px; font-size: 0.85rem; cursor: pointer;
     }
     .chip:hover { color: var(--text); }
-    .chip.on { background: var(--accent); border-color: var(--accent); color: #06210f; font-weight: 600; }
+    .chip.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
 
     .model-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; margin-top: 14px; }
     .model {
@@ -133,8 +177,8 @@
     svg.dial .pos circle { fill: var(--panel-2); stroke: var(--border); stroke-width: 1.5; }
     svg.dial .pos:hover circle { stroke: var(--muted); }
     svg.dial .pos.on circle { stroke: var(--accent); stroke-width: 2.5; }
-    svg.dial .pos.up circle { fill: #2a2318; }
-    svg.dial .pos.down circle { fill: #18222e; }
+    svg.dial .pos.up circle { fill: var(--tint-up); }
+    svg.dial .pos.down circle { fill: var(--tint-down); }
     svg.dial text { fill: var(--text); font-size: 9px; text-anchor: middle; dominant-baseline: middle; font-family: inherit; }
     svg.dial text.lbl { fill: var(--muted); font-size: 8px; }
     svg.dial .hub { fill: none; stroke: var(--border); stroke-dasharray: 3 4; }
@@ -145,14 +189,14 @@
     th:first-child, td:first-child { text-align: left; }
     tbody tr { cursor: pointer; }
     tbody tr:hover { background: var(--panel-2); }
-    tr.on { background: rgba(67, 196, 99, 0.12); }
+    tr.on { background: var(--accent-soft); }
     tr.on td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
     .set-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
     .table-scroll { overflow-x: auto; }
     .finder td { text-align: center; }
     .finder .chip { display: inline-flex; flex-direction: column; align-items: center; line-height: 1.2; border-radius: 8px; }
     .finder .chip small { color: var(--muted); font-size: 0.74rem; }
-    .finder .chip.on small { color: #06210f; }
+    .finder .chip.on small { color: var(--on-accent); }
     @media (max-width: 560px) {
       th, td { padding: 7px 6px; font-size: 0.8rem; }
       .finder th, .finder td { padding: 5px 4px; }
@@ -179,7 +223,7 @@
     .also { color: var(--muted); font-size: 0.87rem; }
     .also b { color: var(--text); }
     .src { font-size: 0.83rem; color: var(--muted); }
-    .src a { color: var(--accent); text-decoration: none; word-break: break-word; }
+    .src a { color: var(--link); text-decoration: none; word-break: break-word; }
     .src a:hover { text-decoration: underline; }
     footer.foot { color: var(--muted); font-size: 0.82rem; text-align: center; padding: 6px 0 0; }
     .warn { color: var(--muted); font-size: 0.83rem; margin-top: 10px; border-left: 3px solid var(--border); padding-left: 10px; }
@@ -193,6 +237,8 @@
         <h1>Hosel Charts</h1>
         <p>Loft &amp; lie adjustment settings, brand by brand.</p>
       </div>
+      <div class="spacer"></div>
+      <button class="theme-btn" id="themeBtn" type="button" title="Switch between light and dark" aria-label="Switch between light and dark">🌙</button>
     </div>
   </header>
 
@@ -1045,6 +1091,23 @@
       save();
     }
   });
+
+  // Light by default; the button flips to dark and remembers it on this device.
+  const themeBtn = $('themeBtn');
+  const paintTheme = () => {
+    const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    themeBtn.textContent = dark ? '\u2600\ufe0f' : '\ud83c\udf19';
+    const meta = $('themeColor');
+    if (meta) meta.setAttribute('content', dark ? '#101a24' : '#f2f6fa');
+  };
+  themeBtn.addEventListener('click', () => {
+    const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    if (dark) document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', 'dark');
+    try { localStorage.setItem('hoselCharts.theme', dark ? 'light' : 'dark'); } catch (e) { /* ignore */ }
+    paintTheme();
+  });
+  paintTheme();
 
   renderBrands();
   renderModels();
