@@ -26,8 +26,13 @@
     Content-Type = "application/manifest+json"
     Cache-Control = "public, max-age=0, must-revalidate"
 
-# Friendly URL for the charts page.
+# The charts used to live at /hosel.html; keep the old links working.
 [[redirects]]
   from = "/hosel"
-  to = "/hosel.html"
-  status = 200
+  to = "/"
+  status = 301
+
+[[redirects]]
+  from = "/hosel.html"
+  to = "/"
+  status = 301
