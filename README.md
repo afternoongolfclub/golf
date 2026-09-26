@@ -72,4 +72,4 @@ and leave the build command empty.
 ## Related
 
 The shot tracker that this page started out inside now lives in its own app:
-[afternoongolfclub/golf-sim-tracker](https://github.com/afternoongolfclub/golf-sim-tracker).
+[afternoongolfclub/golfsimtracker](https://github.com/afternoongolfclub/golfsimtracker).
