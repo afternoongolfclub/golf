@@ -1,7 +1,7 @@
 {
-  "name": "Golf Sim Tracker",
-  "short_name": "Golf Sim",
-  "description": "Log and track golf shot numbers from a simulator or launch monitor.",
+  "name": "Hosel Charts",
+  "short_name": "Hosel",
+  "description": "Loft and lie adjustment charts for adjustable drivers, fairways, mini drivers and hybrids.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
