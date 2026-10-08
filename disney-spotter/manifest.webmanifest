@@ -1,0 +1,17 @@
+{
+  "name": "Wrong Park Patrol",
+  "short_name": "Wrong Park",
+  "description": "Score points at Disney World for spotting people wearing rival-park attire — Harry Potter, Mario, Pokémon, Minions and more.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#17092e",
+  "theme_color": "#2a1155",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

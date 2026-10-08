@@ -49,6 +49,12 @@ publishes lie as a word rather than a number — PING's *Flat*, Callaway's *Draw
 the app says so and marks the degrees as an estimate (`≈`) instead of inventing
 precision.
 
+## Also in this repo
+
+- **[Wrong Park Patrol](disney-spotter/)** (`disney-spotter/`) — a lighthearted
+  scavenger-hunt game for Disney World: score points for spotting fellow guests
+  wearing rival-park attire (Harry Potter, Mario, Pokémon, Minions, and more).
+
 ## Usage
 
 Open `index.html` in any modern browser, or visit the deployed site. On a phone,
